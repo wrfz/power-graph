@@ -1,0 +1,26 @@
+{
+    "source": "src/card.ts",
+    "module": "dist/card.js",
+    "targets": {
+        "module": {
+            "includeNodeModules": [
+                "echarts",
+                "zrender",
+                "tslib",
+                "buffer",
+                "base64-js",
+                "ieee754"
+            ]
+        }
+    },
+    "scripts": {
+        "watch": "parcel watch",
+        "build": "parcel build"
+    },
+    "devDependencies": {
+        "@parcel/transformer-inline-string": "^2.8.3",
+        "buffer": "^6.0.3",
+        "echarts": "^5.5.0",
+        "parcel": "^2.12.0"
+    }
+}
