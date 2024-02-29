@@ -54,6 +54,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
     _elements = { card: Element, style: Element };
     _card: HTMLElement;
     _chart: echarts.EChartsType;
+    _tid: number = 0;
 
     constructor() {
         super();
@@ -61,17 +62,17 @@ class ToggleCardWithShadowDom extends HTMLElement {
     }
 
     setConfig(config) {
+        console.log("setConfig");
         this._config = config;
 
         if (!this._config.entities) {
             throw new Error('Please define an entity!');
         }
-        /*        if (!this._config.entity) {
-                    throw new Error('Please define an entity!');
-                }*/
+        this.clearRefreshInterval();
     }
 
     set hass(hass) {
+        console.log("hass");
         this._hass = hass;
     }
 
@@ -103,15 +104,53 @@ class ToggleCardWithShadowDom extends HTMLElement {
                 position: relative;
                 height: 90vh;
                 overflow: hidden;
-            }
-        `
+            }`
 
         this.attachShadow({ mode: "open" });
         this.shadowRoot!.append(_style, this._card);
 
         this.sleep(100).then(() => {
-            console.log('now attach!');
-            this.myAttach();
+            console.log('create chart object');
+
+            this._chart = echarts.init(this._card);
+            this._chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    position: function (pt) {
+                        return [pt[0], '10%'];
+                    }
+                },
+                toolbox: {
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 'none'
+                        },
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                xAxis: {
+                    type: 'time',
+                    boundaryGap: false
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                dataZoom: [
+                    {
+                        type: 'inside',
+                        start: 70,
+                        end: 100
+                    },
+                    {
+                        start: 70,
+                        end: 100
+                    }
+                ]
+            });
+            this._chart.resize();
+
+            this.requestData();
         });
     }
 
@@ -131,24 +170,27 @@ class ToggleCardWithShadowDom extends HTMLElement {
         return date;
     }
 
-    myAttach() {
+    requestData() {
+        console.log("requestData >>");
+
         let entities: string[] = [];
         for (let id in this._config.entities) {
             let entity = this._config.entities[id]
-            console.log(entity);
+            //console.log(entity);
             entities.push(entity.entity);
         }
 
         const request = {
             type: "history/history_during_period",
-            start_time: this.formatDate(this.subHours(new Date(), 4)),
+            start_time: this.formatDate(this.subHours(new Date(), 8)),
             end_time: this.formatDate(new Date()),
             minimal_response: true,
             no_attributes: true,
             entity_ids: entities
         };
-        console.log(request);
-        this._hass.callWS(request).then(this.loaderCallbackWS.bind(this), this.loaderFailed.bind(this));
+        //console.log(request);
+
+        this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
 
     resize() {
@@ -171,9 +213,9 @@ class ToggleCardWithShadowDom extends HTMLElement {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    loaderCallbackWS(result) {
-        console.log("loaderCallbackWS")
-        console.log(result)
+    dataResponse(result) {
+        console.log("dataResponse >>")
+        //console.log(result)
 
         type Post = {
             last_changed: number;
@@ -192,10 +234,10 @@ class ToggleCardWithShadowDom extends HTMLElement {
         let series: TSerie[] = [];
 
         for (let entity in result) {
-            console.log(entity);
+            //console.log(entity);
             legends.push(entity)
             const a = result[entity];
-            console.log(a);
+            //console.log(a);
 
             let data: number[][] = [];
             for (let i = 1; i < a.length; i++) {
@@ -211,52 +253,34 @@ class ToggleCardWithShadowDom extends HTMLElement {
             })
         }
 
-        this._chart = echarts.init(this._card);
         this._chart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                position: function (pt) {
-                    return [pt[0], '10%'];
-                }
-            },
-            toolbox: {
-                feature: {
-                    dataZoom: {
-                        yAxisIndex: 'none'
-                    },
-                    restore: {},
-                    saveAsImage: {}
-                }
-            },
             legend: {
                 data: legends
             },
-            xAxis: {
-                type: 'time',
-                boundaryGap: false
-            },
-            yAxis: {
-                type: 'value'
-            },
-            dataZoom: [
-                {
-                    type: 'inside',
-                    start: 70,
-                    end: 100
-                },
-                {
-                    start: 70,
-                    end: 100
-                }
-            ],
             series: series
         });
-        this._chart.resize();
+
+        if (this.isNumber(this._config.autorefresh) && this._tid == 0) {
+            console.log("setInterval");
+            this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+        }
     }
 
     loaderFailed(error) {
         console.log("Database request failure");
         console.log(error);
+    }
+
+    isNumber(value?: string | number): boolean {
+        return (value != null && value !== '' && !isNaN(Number(value.toString())));
+    }
+
+    clearRefreshInterval() {
+        if (this._tid != 0) {
+            console.log("clearInterval");
+            clearTimeout(this._tid);
+            this._tid = 0;
+        }
     }
 }
 
