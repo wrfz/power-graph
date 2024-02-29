@@ -1,15 +1,21 @@
 import * as echarts from 'echarts/core';
 
+//import "moment.min";
+
 // Import bar charts, all suffixed with Chart
-import { BarChart } from 'echarts/charts';
+import { BarChart, LineChart } from 'echarts/charts';
 
 import {
     TitleComponent,
+    ToolboxComponent,
     TooltipComponent,
     GridComponent,
     DatasetComponent,
-    TransformComponent
+    LegendComponent,
+    TransformComponent,
+    DataZoomComponent
 } from 'echarts/components';
+
 
 // Features like Universal Transition and Label Layout
 import { LabelLayout, UniversalTransition } from 'echarts/features';
@@ -22,9 +28,13 @@ import { CanvasRenderer } from 'echarts/renderers';
 echarts.use([
     BarChart,
     TitleComponent,
+    ToolboxComponent,
     TooltipComponent,
     GridComponent,
     DatasetComponent,
+    DataZoomComponent,
+    LegendComponent,
+    LineChart,
     TransformComponent,
     LabelLayout,
     UniversalTransition,
@@ -39,24 +49,26 @@ declare global {
 
 
 class ToggleCardWithShadowDom extends HTMLElement {
-
-    // private properties
     _config;
     _hass;
     _elements = { card: Element, style: Element };
     _card: HTMLElement;
+    _chart: echarts.EChartsType;
 
-    // lifecycle
     constructor() {
         super();
-        this.doCard();
-        this.doStyle();
-        this.doAttach();
+        this.createContent();
     }
 
     setConfig(config) {
         this._config = config;
-        this.doCheckConfig();
+
+        if (!this._config.entities) {
+            throw new Error('Please define an entity!');
+        }
+        /*        if (!this._config.entity) {
+                    throw new Error('Please define an entity!');
+                }*/
     }
 
     set hass(hass) {
@@ -81,34 +93,19 @@ class ToggleCardWithShadowDom extends HTMLElement {
         return friendlyName ? friendlyName : this.getEntityID();
     }
 
-    // jobs
-    doCheckConfig() {
-        if (!this._config.entity) {
-            throw new Error('Please define an entity!');
-        }
-    }
-
-    doCard() {
-        console.log("doCard() >>")
+    createContent() {
         this._card = document.createElement("div");
         this._card.setAttribute("id", "chart-container");
-    }
 
-    doStyle() {
-        console.log("doStyle() >>")
-    }
-
-    doAttach() {
-        var _style:Element = document.createElement("style");
+        var _style: Element = document.createElement("style");
         _style.textContent = `
             #chart-container {
                 position: relative;
-                height: 100vh;
+                height: 90vh;
                 overflow: hidden;
             }
         `
 
-        console.log("doAttach() >>")
         this.attachShadow({ mode: "open" });
         this.shadowRoot!.append(_style, this._card);
 
@@ -118,26 +115,40 @@ class ToggleCardWithShadowDom extends HTMLElement {
         });
     }
 
+    formatDate(date: Date): string {
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = date.getHours().toString().padStart(2, '0');;
+        const minutes = date.getMinutes().toString().padStart(2, '0');;
+        const seconds = date.getSeconds().toString().padStart(2, '0');;
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
+    }
+
+    subHours(date, hours) {
+        const hoursToAdd = hours * 60 * 60 * 1000;
+        date.setTime(date.getTime() - hoursToAdd);
+        return date;
+    }
+
     myAttach() {
-        var myChart = echarts.init(this._card);
-        myChart.setOption({
-            title: {
-                text: 'ECharts Getting Started Example'
-            },
-            tooltip: {},
-            xAxis: {
-                data: ['shirt', 'cardigan', 'chiffon', 'pants', 'heels', 'socks']
-            },
-            yAxis: {},
-            series: [
-                {
-                    name: 'sales',
-                    type: 'bar',
-                    data: [5, 20, 36, 10, 10, 20]
-                }
-            ]
-        });
-        myChart.resize();
+        let entities: string[] = [];
+        for (let id in this._config.entities) {
+            let entity = this._config.entities[id]
+            console.log(entity);
+            entities.push(entity.entity);
+        }
+
+        const request = {
+            type: "history/history_during_period",
+            start_time: this.formatDate(this.subHours(new Date(), 4)),
+            end_time: this.formatDate(new Date()),
+            minimal_response: true,
+            no_attributes: true,
+            entity_ids: entities
+        };
+        console.log(request);
+        this._hass.callWS(request).then(this.loaderCallbackWS.bind(this), this.loaderFailed.bind(this));
     }
 
     resize() {
@@ -145,12 +156,6 @@ class ToggleCardWithShadowDom extends HTMLElement {
         const w = this._card.clientWidth;
         console.log("width: " + w)
         console.log("resize() <<")
-    }
-
-    doToggle() {
-        this._hass.callService('input_boolean', 'toggle', {
-            entity_id: this.getEntityID()
-        });
     }
 
     getCardSize() {
@@ -166,13 +171,100 @@ class ToggleCardWithShadowDom extends HTMLElement {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    loaderCallbackWS(result) {
+        console.log("loaderCallbackWS")
+        console.log(result)
+
+        type Post = {
+            last_changed: number;
+            state: any;
+            entity_id: string;
+        }
+        type TSerie = {
+            name: string;
+            type: string;
+            smooth: boolean;
+            symbol: string;
+            data: any;
+        }
+
+        let legends: string[] = [];
+        let series: TSerie[] = [];
+
+        for (let entity in result) {
+            console.log(entity);
+            legends.push(entity)
+            const a = result[entity];
+            console.log(a);
+
+            let data: number[][] = [];
+            for (let i = 1; i < a.length; i++) {
+                data.push([a[i].lu * 1000, a[i].s]);
+            }
+
+            series.push({
+                name: entity,
+                type: 'line',
+                smooth: false,
+                symbol: 'none',
+                data: data
+            })
+        }
+
+        this._chart = echarts.init(this._card);
+        this._chart.setOption({
+            tooltip: {
+                trigger: 'axis',
+                position: function (pt) {
+                    return [pt[0], '10%'];
+                }
+            },
+            toolbox: {
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    },
+                    restore: {},
+                    saveAsImage: {}
+                }
+            },
+            legend: {
+                data: legends
+            },
+            xAxis: {
+                type: 'time',
+                boundaryGap: false
+            },
+            yAxis: {
+                type: 'value'
+            },
+            dataZoom: [
+                {
+                    type: 'inside',
+                    start: 70,
+                    end: 100
+                },
+                {
+                    start: 70,
+                    end: 100
+                }
+            ],
+            series: series
+        });
+        this._chart.resize();
+    }
+
+    loaderFailed(error) {
+        console.log("Database request failure");
+        console.log(error);
+    }
 }
 
-customElements.define('toggle-card-with-shadow-dom', ToggleCardWithShadowDom);
+customElements.define('power-graph', ToggleCardWithShadowDom);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-    type: "toggle-card-with-shadow-dom",
-    name: "Vanilla Js Toggle With Shadow DOM",
-    description: "Turn an entity on and off"
+    type: "power-graph",
+    name: "Power Graph Card",
+    description: "An interactive history viewer card"
 });
