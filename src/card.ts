@@ -1,3 +1,14 @@
+
+import {
+    css,
+    CSSResultGroup,
+    html,
+    LitElement,
+    PropertyValues,
+    TemplateResult,
+} from "lit";
+
+
 import * as echarts from 'echarts/core';
 
 //import "moment.min";
@@ -23,6 +34,8 @@ import { LabelLayout, UniversalTransition } from 'echarts/features';
 // Import the Canvas renderer
 // Note that including the CanvasRenderer or SVGRenderer is a required step
 import { CanvasRenderer } from 'echarts/renderers';
+
+
 
 // Register the required components
 echarts.use([
@@ -55,6 +68,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
     _card: HTMLElement;
     _chart: echarts.EChartsType;
     _tid: number = 0;
+    _series: any[] = [];
 
     constructor() {
         super();
@@ -79,6 +93,20 @@ class ToggleCardWithShadowDom extends HTMLElement {
     // accessors
     getEntityID() {
         return this._config.entity;
+    }
+
+    static get styles(): CSSResultGroup {
+        return css`
+          :host {
+            display: block;
+            min-height: 60px;
+          }
+          .info {
+            text-align: center;
+            line-height: 60px;
+            color: var(--secondary-text-color);
+          }
+        `;
     }
 
     getState() {
@@ -109,15 +137,70 @@ class ToggleCardWithShadowDom extends HTMLElement {
         this.attachShadow({ mode: "open" });
         this.shadowRoot!.append(_style, this._card);
 
+
+
         this.sleep(100).then(() => {
             console.log('create chart object');
 
             this._chart = echarts.init(this._card);
-            this._chart.setOption({
+            let options = {
                 tooltip: {
                     trigger: 'axis',
-                    position: function (pt) {
-                        return [pt[0], '10%'];
+                    formatter: (params) => {
+                        //console.log(params);
+                        var xTime = new Date(params[0].axisValue)
+                        let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
+
+
+                        let chart = this._chart;
+                        const tooltipReducer = (prev, curr) => {
+                            return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
+                        }
+
+                        this._series.forEach((serie, index) => {
+                            let color = chart.getVisual({ seriesIndex: index }, 'color');
+
+                            // const style: React.CSSProperties = {
+                            //     display: 'inline-block',
+                            //     'margin-right': '5px',
+                            //     'border-radius': '10px',
+                            //     width: '9px',
+                            //     height: '9px',
+                            //     'background-color': color
+                            // };
+
+
+                            /*
+                                                        const h1Styles: CSS.Properties = {
+                                                            display?: 'inline-block',
+                                                            'margin-right': '5px',
+                                                            'border-radius': '10px',
+                                                            width: '9px',
+                                                            height: '9px',
+                                                            'background-color': color
+                                                        };*/
+
+                            // const h1Style = css({
+                            //     display: 'inline-block',
+                            //     'margin-right': '5px',
+                            //     'border-radius': '10px',
+                            //     width: '9px',
+                            //     height: '9px',
+                            //     'background-color': color
+                            // });
+                            //let css: string = JSON.stringify(h1Style);
+                            //console.log(css);
+
+                            // TODO: Use binary search to find the closest value
+                            let value: number = serie.data.reduce(tooltipReducer)[1]
+                            // tooltip += `<p><span style="${style}"></span>`
+                            //let aa = `<p><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color: ${this._chart.getVisual({ seriesIndex: index }, 'color')}"></span>`
+                            //console.log(aa)
+                            tooltip += `<tr><td><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color: ${this._chart.getVisual({ seriesIndex: index }, 'color')}"></span></td>`
+                            tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
+                        });
+                        tooltip += `</table>`;
+                        return tooltip;
                     }
                 },
                 toolbox: {
@@ -147,7 +230,12 @@ class ToggleCardWithShadowDom extends HTMLElement {
                         end: 100
                     }
                 ]
-            });
+            };
+            if (this._config.title) {
+                console.log("set title: " + this._config.title);
+                Array.prototype.concat.call(options, { title: this._config.title })
+            }
+            this._chart.setOption(options);
             this._chart.resize();
 
             this.requestData();
@@ -182,7 +270,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
 
         const request = {
             type: "history/history_during_period",
-            start_time: this.formatDate(this.subHours(new Date(), 8)),
+            start_time: this.formatDate(this.subHours(new Date(), 24)),
             end_time: this.formatDate(new Date()),
             minimal_response: true,
             no_attributes: true,
@@ -222,29 +310,25 @@ class ToggleCardWithShadowDom extends HTMLElement {
             state: any;
             entity_id: string;
         }
-        type TSerie = {
-            name: string;
-            type: string;
-            smooth: boolean;
-            symbol: string;
-            data: any;
-        }
 
         let legends: string[] = [];
-        let series: TSerie[] = [];
+        let xAxisData: Set<number> = new Set<number>();
+        this._series = [];
 
         for (let entity in result) {
             //console.log(entity);
             legends.push(entity)
-            const a = result[entity];
+            const arr = result[entity];
             //console.log(a);
 
             let data: number[][] = [];
-            for (let i = 1; i < a.length; i++) {
-                data.push([a[i].lu * 1000, a[i].s]);
+            for (let i = 1; i < arr.length; i++) {
+                let time = Math.round(arr[i].lu * 1000);
+                data.push([time, arr[i].s]);
+                xAxisData.add(time);
             }
 
-            series.push({
+            this._series.push({
                 name: entity,
                 type: 'line',
                 smooth: false,
@@ -257,7 +341,12 @@ class ToggleCardWithShadowDom extends HTMLElement {
             legend: {
                 data: legends
             },
-            series: series
+            xAxis: {
+                type: 'time',
+                boundaryGap: false,
+                data: xAxisData
+            },
+            series: this._series
         });
 
         if (this.isNumber(this._config.autorefresh) && this._tid == 0) {
