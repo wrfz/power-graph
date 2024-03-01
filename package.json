@@ -13,8 +13,8 @@
                 "lit",
                 "@lit/reactive-element",
                 "lit-html",
-                "lit-element/lit-element.js",
-                "lit-html/is-server.js"
+                "lit-element",
+                "lit-html"
             ]
         }
     },

@@ -1,11 +1,13 @@
 
 import {
     css,
+    CSSResult,
     CSSResultGroup,
     html,
     LitElement,
     PropertyValues,
     TemplateResult,
+    unsafeCSS,
 } from "lit";
 
 
@@ -76,7 +78,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
     }
 
     setConfig(config) {
-        console.log("setConfig");
+        //console.log("setConfig");
         this._config = config;
 
         if (!this._config.entities) {
@@ -86,40 +88,8 @@ class ToggleCardWithShadowDom extends HTMLElement {
     }
 
     set hass(hass) {
-        console.log("hass");
+        //console.log("hass");
         this._hass = hass;
-    }
-
-    // accessors
-    getEntityID() {
-        return this._config.entity;
-    }
-
-    static get styles(): CSSResultGroup {
-        return css`
-          :host {
-            display: block;
-            min-height: 60px;
-          }
-          .info {
-            text-align: center;
-            line-height: 60px;
-            color: var(--secondary-text-color);
-          }
-        `;
-    }
-
-    getState() {
-        return this._hass.states[this.getEntityID()];
-    }
-
-    getAttributes() {
-        return this.getState().attributes
-    }
-
-    getName() {
-        const friendlyName = this.getAttributes().friendly_name;
-        return friendlyName ? friendlyName : this.getEntityID();
     }
 
     createContent() {
@@ -140,17 +110,16 @@ class ToggleCardWithShadowDom extends HTMLElement {
 
 
         this.sleep(100).then(() => {
-            console.log('create chart object');
+            //console.log('create chart object');
 
             this._chart = echarts.init(this._card);
             let options = {
                 tooltip: {
                     trigger: 'axis',
+                    triggerOn: 'click',
                     formatter: (params) => {
-                        //console.log(params);
                         var xTime = new Date(params[0].axisValue)
                         let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
-
 
                         let chart = this._chart;
                         const tooltipReducer = (prev, curr) => {
@@ -158,45 +127,19 @@ class ToggleCardWithShadowDom extends HTMLElement {
                         }
 
                         this._series.forEach((serie, index) => {
-                            let color = chart.getVisual({ seriesIndex: index }, 'color');
-
-                            // const style: React.CSSProperties = {
-                            //     display: 'inline-block',
-                            //     'margin-right': '5px',
-                            //     'border-radius': '10px',
-                            //     width: '9px',
-                            //     height: '9px',
-                            //     'background-color': color
-                            // };
-
-
-                            /*
-                                                        const h1Styles: CSS.Properties = {
-                                                            display?: 'inline-block',
-                                                            'margin-right': '5px',
-                                                            'border-radius': '10px',
-                                                            width: '9px',
-                                                            height: '9px',
-                                                            'background-color': color
-                                                        };*/
-
-                            // const h1Style = css({
-                            //     display: 'inline-block',
-                            //     'margin-right': '5px',
-                            //     'border-radius': '10px',
-                            //     width: '9px',
-                            //     height: '9px',
-                            //     'background-color': color
-                            // });
-                            //let css: string = JSON.stringify(h1Style);
-                            //console.log(css);
+                            const color: CSSResult = unsafeCSS(chart.getVisual({ seriesIndex: index }, 'color'));
+                            const style: CSSResult = css`
+                                display: inline-block;
+                                margin-right: 5px;
+                                border-radius: 10px;
+                                width: 9px;
+                                height: 9px;
+                                background-color: ${color};
+                            `;
 
                             // TODO: Use binary search to find the closest value
-                            let value: number = serie.data.reduce(tooltipReducer)[1]
-                            // tooltip += `<p><span style="${style}"></span>`
-                            //let aa = `<p><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color: ${this._chart.getVisual({ seriesIndex: index }, 'color')}"></span>`
-                            //console.log(aa)
-                            tooltip += `<tr><td><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color: ${this._chart.getVisual({ seriesIndex: index }, 'color')}"></span></td>`
+                            const value: number = serie.data.reduce(tooltipReducer)[1]
+                            tooltip += `<tr><td><span style="${style}"></span></td>`
                             tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
                         });
                         tooltip += `</table>`;
@@ -232,7 +175,6 @@ class ToggleCardWithShadowDom extends HTMLElement {
                 ]
             };
             if (this._config.title) {
-                console.log("set title: " + this._config.title);
                 Array.prototype.concat.call(options, { title: this._config.title })
             }
             this._chart.setOption(options);
@@ -259,7 +201,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
     }
 
     requestData() {
-        console.log("requestData >>");
+        //console.log("requestData >>");
 
         let entities: string[] = [];
         for (let id in this._config.entities) {
@@ -302,7 +244,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
     }
 
     dataResponse(result) {
-        console.log("dataResponse >>")
+        //console.log("dataResponse >>")
         //console.log(result)
 
         type Post = {
@@ -315,10 +257,10 @@ class ToggleCardWithShadowDom extends HTMLElement {
         let xAxisData: Set<number> = new Set<number>();
         this._series = [];
 
-        for (let entity in result) {
-            //console.log(entity);
-            legends.push(entity)
-            const arr = result[entity];
+        for (let entityId in result) {
+            // console.log(entity);
+            legends.push(entityId)
+            const arr = result[entityId];
             //console.log(a);
 
             let data: number[][] = [];
@@ -329,10 +271,16 @@ class ToggleCardWithShadowDom extends HTMLElement {
             }
 
             this._series.push({
-                name: entity,
+                name: entityId,
                 type: 'line',
                 smooth: false,
                 symbol: 'none',
+                lineStyle: {
+                    width: 3,
+                    shadowColor: 'rgba(0,0,0,0.3)',
+                    shadowBlur: 10,
+                    shadowOffsetY: 8
+                },
                 data: data
             })
         }
@@ -350,7 +298,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
         });
 
         if (this.isNumber(this._config.autorefresh) && this._tid == 0) {
-            console.log("setInterval");
+            //console.log("setInterval");
             this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
         }
     }
