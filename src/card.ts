@@ -10,10 +10,9 @@ import {
     unsafeCSS,
 } from "lit";
 
+import { GraphConfig, EntityConfig } from './GraphConfig';
 
 import * as echarts from 'echarts/core';
-
-//import "moment.min";
 
 // Import bar charts, all suffixed with Chart
 import { BarChart, LineChart } from 'echarts/charts';
@@ -62,28 +61,25 @@ declare global {
     }
 }
 
-
 class ToggleCardWithShadowDom extends HTMLElement {
-    _config;
-    _hass;
-    _elements = { card: Element, style: Element };
-    _card: HTMLElement;
-    _chart: echarts.EChartsType;
-    _tid: number = 0;
-    _series: any[] = [];
+    private _config: GraphConfig;
+    private _hass;
+    private _elements = { card: Element, style: Element };
+    private _card: HTMLElement;
+    private _chart: echarts.EChartsType;
+    private _tid: number = 0;
+    private _series: any[] = [];
 
     constructor() {
         super();
         this.createContent();
     }
 
-    setConfig(config) {
+    setConfig(config: GraphConfig) {
         //console.log("setConfig");
-        this._config = config;
+        this._config = new GraphConfig(config);
+        this._config.validate();
 
-        if (!this._config.entities) {
-            throw new Error('Please define an entity!');
-        }
         this.clearRefreshInterval();
     }
 
@@ -92,7 +88,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
         this._hass = hass;
     }
 
-    createContent() {
+    private createContent() {
         this._card = document.createElement("div");
         this._card.setAttribute("id", "chart-container");
 
@@ -184,7 +180,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
         });
     }
 
-    formatDate(date: Date): string {
+    private formatDate(date: Date): string {
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const year = date.getFullYear();
@@ -194,25 +190,23 @@ class ToggleCardWithShadowDom extends HTMLElement {
         return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
     }
 
-    subHours(date, hours) {
+    private subHours(date, hours) {
         const hoursToAdd = hours * 60 * 60 * 1000;
         date.setTime(date.getTime() - hoursToAdd);
         return date;
     }
 
-    requestData() {
-        //console.log("requestData >>");
+    private requestData() {
+        //console.log("requestData: " + this._config.entities.length);
 
         let entities: string[] = [];
-        for (let id in this._config.entities) {
-            let entity = this._config.entities[id]
-            //console.log(entity);
+        for (const entity of this._config.entities) {
             entities.push(entity.entity);
         }
 
         const request = {
             type: "history/history_during_period",
-            start_time: this.formatDate(this.subHours(new Date(), 24)),
+            start_time: this.formatDate(this.subHours(new Date(), 2 * 24)),
             end_time: this.formatDate(new Date()),
             minimal_response: true,
             no_attributes: true,
@@ -239,50 +233,54 @@ class ToggleCardWithShadowDom extends HTMLElement {
         return { entity: "input_boolean.tcwsd" }
     }
 
-    sleep(ms) {
+    private sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    dataResponse(result) {
+    private dataResponse(result) {
         //console.log("dataResponse >>")
         //console.log(result)
 
-        type Post = {
-            last_changed: number;
-            state: any;
-            entity_id: string;
-        }
+        // type Post = {
+        //     last_changed: number;
+        //     state: any;
+        //     entity_id: string;
+        // }
 
         let legends: string[] = [];
-        let xAxisData: Set<number> = new Set<number>();
         this._series = [];
 
         for (let entityId in result) {
-            // console.log(entity);
-            legends.push(entityId)
+            let entity: EntityConfig = this._config.getEntityById(entityId);
+            legends.push(entity.name || entity.entity)
             const arr = result[entityId];
             //console.log(a);
 
             let data: number[][] = [];
             for (let i = 1; i < arr.length; i++) {
-                let time = Math.round(arr[i].lu * 1000);
+                const time: number = Math.round(arr[i].lu * 1000);
                 data.push([time, arr[i].s]);
-                xAxisData.add(time);
             }
 
-            this._series.push({
-                name: entityId,
+            const line = {
+                name: entity.name || entity.entity,
                 type: 'line',
                 smooth: false,
                 symbol: 'none',
-                lineStyle: {
-                    width: 3,
-                    shadowColor: 'rgba(0,0,0,0.3)',
-                    shadowBlur: 10,
-                    shadowOffsetY: 8
-                },
                 data: data
-            })
+            };
+            if (this._config.shadow || entity.shadow) {
+                Object.assign(line, {
+                    lineStyle: {
+                        width: 3,
+                        shadowColor: 'rgba(0,0,0,0.3)',
+                        shadowBlur: 10,
+                        shadowOffsetY: 8
+                    }
+                });
+            }
+            //console.log(line);
+            this._series.push(line)
         }
 
         this._chart.setOption({
@@ -291,8 +289,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
             },
             xAxis: {
                 type: 'time',
-                boundaryGap: false,
-                data: xAxisData
+                boundaryGap: false
             },
             series: this._series
         });
@@ -303,16 +300,16 @@ class ToggleCardWithShadowDom extends HTMLElement {
         }
     }
 
-    loaderFailed(error) {
+    private loaderFailed(error) {
         console.log("Database request failure");
         console.log(error);
     }
 
-    isNumber(value?: string | number): boolean {
+    private isNumber(value?: string | number): boolean {
         return (value != null && value !== '' && !isNaN(Number(value.toString())));
     }
 
-    clearRefreshInterval() {
+    private clearRefreshInterval() {
         if (this._tid != 0) {
             console.log("clearInterval");
             clearTimeout(this._tid);
