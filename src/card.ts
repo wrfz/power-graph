@@ -239,13 +239,14 @@ class ToggleCardWithShadowDom extends HTMLElement {
 
     private dataResponse(result) {
         //console.log("dataResponse >>")
-        //console.log(result)
+        console.log(result)
 
-        // type Post = {
-        //     last_changed: number;
-        //     state: any;
-        //     entity_id: string;
-        // }
+        let thisCard: ToggleCardWithShadowDom = this;
+
+        type DataItem = {
+            lu: number;
+            s: number;
+        }
 
         let legends: string[] = [];
         this._series = [];
@@ -253,7 +254,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
         for (let entityId in result) {
             let entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
-            const arr = result[entityId];
+            const arr: DataItem[] = result[entityId];
             //console.log(a);
 
             let data: number[][] = [];
@@ -283,9 +284,16 @@ class ToggleCardWithShadowDom extends HTMLElement {
             this._series.push(line)
         }
 
+        let config: GraphConfig = this._config;
         this._chart.setOption({
             legend: {
-                data: legends
+                data: legends,
+                formatter: function (name) {
+                    let entity: EntityConfig = config.getEntityByName(name);
+                    const arr: DataItem[] = result[entity.entity];
+                    let lastItem: DataItem = arr[arr.length - 1];
+                    return name + " (" + lastItem.s + " " + thisCard.getUnitOfMeasurement(entity.entity) + ")";
+                }
             },
             xAxis: {
                 type: 'time',
@@ -315,6 +323,18 @@ class ToggleCardWithShadowDom extends HTMLElement {
             clearTimeout(this._tid);
             this._tid = 0;
         }
+    }
+
+    private getDeviceClass(entityId) {
+        return this._hass.states[entityId]?.attributes?.device_class;
+    }
+
+    private getUnitOfMeasurement(entityId) {
+        return this._hass.states[entityId]?.attributes?.unit_of_measurement;
+    }
+
+    private getStateClass(entityId) {
+        return this._hass.states[entityId]?.attributes?.state_class;
     }
 }
 

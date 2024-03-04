@@ -26,6 +26,15 @@ export class GraphConfig {
                 return entity;
             }
         }
-        throw Error("Entity not found: " + entityId);
+        throw Error("EntityId not found: " + entityId);
+    }
+
+    public getEntityByName(name: string): EntityConfig {
+        for (const entity of this.entities) {
+            if (entity.name == name) {
+                return entity;
+            }
+        }
+        throw Error("Entity name not found: " + name);
     }
 }
