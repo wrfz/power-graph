@@ -1,5 +1,5 @@
 {
-    "source": "src/card.ts",
+    "source": "src/PowerGraph.ts",
     "module": "dist/card.js",
     "targets": {
         "module": {

@@ -61,7 +61,7 @@ declare global {
     }
 }
 
-class ToggleCardWithShadowDom extends HTMLElement {
+class PowerGraph extends HTMLElement {
     private _config: GraphConfig;
     private _hass;
     private _elements = { card: Element, style: Element };
@@ -241,7 +241,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
         //console.log("dataResponse >>")
         console.log(result)
 
-        let thisCard: ToggleCardWithShadowDom = this;
+        let thisCard: PowerGraph = this;
 
         type DataItem = {
             lu: number;
@@ -338,7 +338,7 @@ class ToggleCardWithShadowDom extends HTMLElement {
     }
 }
 
-customElements.define('power-graph', ToggleCardWithShadowDom);
+customElements.define('power-graph', PowerGraph);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
