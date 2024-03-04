@@ -28,7 +28,6 @@ import {
     DataZoomComponent
 } from 'echarts/components';
 
-
 // Features like Universal Transition and Label Layout
 import { LabelLayout, UniversalTransition } from 'echarts/features';
 
@@ -75,7 +74,7 @@ class PowerGraph extends HTMLElement {
         this.createContent();
     }
 
-    setConfig(config: GraphConfig) {
+    public setConfig(config: GraphConfig): void {
         //console.log("setConfig");
         this._config = new GraphConfig(config);
         this._config.validate();
@@ -224,13 +223,35 @@ class PowerGraph extends HTMLElement {
         console.log("resize() <<")
     }
 
+    public static async getConfigElement() {
+        await import('./Editor.ts');
+        return document.createElement("power-graph-editor");
+    }
+
     getCardSize() {
         return 3;
     }
 
     // configuration defaults
     static getStubConfig() {
-        return { entity: "input_boolean.tcwsd" }
+        return {
+            title: "PV Leistung",
+            entities: [
+                {
+                    entity: "sensor.sofar_15ktl_pv_power_total",
+                    name: "Power Total"
+                },
+                {
+                    entity: "sensor.sofar_15ktl_pv_power_1",
+                    name: "Haus 1"
+                },
+                {
+                    entity: "sensor.sofar_15ktl_pv_power_2",
+                    name: "Haus 2"
+                }
+            ],
+            autorefresh: 10
+        }
     }
 
     private sleep(ms) {
@@ -289,9 +310,9 @@ class PowerGraph extends HTMLElement {
             legend: {
                 data: legends,
                 formatter: function (name) {
-                    let entity: EntityConfig = config.getEntityByName(name);
+                    const entity: EntityConfig = config.getEntityByName(name);
                     const arr: DataItem[] = result[entity.entity];
-                    let lastItem: DataItem = arr[arr.length - 1];
+                    const lastItem: DataItem = arr[arr.length - 1];
                     return name + " (" + lastItem.s + " " + thisCard.getUnitOfMeasurement(entity.entity) + ")";
                 }
             },
@@ -344,5 +365,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
     type: "power-graph",
     name: "Power Graph Card",
-    description: "An interactive history viewer card"
+    description: "An interactive history viewer card",
+    documentationURL: "https://developers.home-assistant.io/docs/frontend/custom-ui/custom-card/", // Adds a help link in the frontend card editor
 });
