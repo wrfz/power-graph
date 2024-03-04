@@ -223,11 +223,6 @@ class PowerGraph extends HTMLElement {
         console.log("resize() <<")
     }
 
-    public static async getConfigElement() {
-        await import('./Editor.ts');
-        return document.createElement("power-graph-editor");
-    }
-
     getCardSize() {
         return 3;
     }
