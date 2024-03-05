@@ -12,6 +12,7 @@
                 "ieee754",
                 "lit",
                 "@lit/reactive-element",
+                "@juggle/resize-observer",
                 "lit-html",
                 "lit-element",
                 "lit-html"
@@ -23,6 +24,7 @@
         "build": "parcel build"
     },
     "devDependencies": {
+        "@juggle/resize-observer": "^3.4.0",
         "@parcel/transformer-inline-string": "^2.8.3",
         "buffer": "^6.0.3",
         "echarts": "^5.5.0",

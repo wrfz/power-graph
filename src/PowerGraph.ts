@@ -35,6 +35,8 @@ import { LabelLayout, UniversalTransition } from 'echarts/features';
 // Note that including the CanvasRenderer or SVGRenderer is a required step
 import { CanvasRenderer } from 'echarts/renderers';
 
+import { ResizeObserver } from "@juggle/resize-observer";
+
 
 // Register the required components
 echarts.use([
@@ -58,7 +60,6 @@ declare global {
         customCards?: any;
     }
 }
-
 function isNumber(value?: string | number): boolean {
     return (value != null && value !== '' && !isNaN(Number(value.toString())));
 }
@@ -92,11 +93,13 @@ class PowerGraph extends HTMLElement {
     private _tid: number = 0;
     private _series: any[] = [];
     private _range;
+    private _resizeObserver;
 
     constructor() {
         super();
         this.createContent();
         this._range = new PowerGraph.TimeRange(subHours(new Date(), 100 * 24), new Date());
+        this._resizeObserver = new ResizeObserver(entries => { this.resize(); });
     }
 
     public setConfig(config: GraphConfig): void {
@@ -114,6 +117,8 @@ class PowerGraph extends HTMLElement {
     }
 
     private createContent() {
+        //console.log("createContent");
+
         this._card = document.createElement("div");
         this._card.setAttribute("id", "chart-container");
 
@@ -121,99 +126,111 @@ class PowerGraph extends HTMLElement {
         _style.textContent = `
             #chart-container {
                 position: relative;
-                height: 90vh;
+                height: 90%;
                 overflow: hidden;
             }`
 
         this.attachShadow({ mode: "open" });
         this.shadowRoot!.append(_style, this._card);
+    }
 
-        this.sleep(100).then(() => {
-            //console.log('create chart object');
+    private createChart() {
+        //console.log("createChart");
 
-            this._chart = echarts.init(this._card);
-            let chart: echarts.ECharts = this._chart;
-            this._chart.on('datazoom', function (evt) {
-                const option = chart.getOption();
-                const dataZoom: any[] = option.dataZoom as any[];
-                const { startTime, endTime } = dataZoom[0]
-                localStorage.setItem("dataZoom.startTime", startTime);
-                localStorage.setItem("dataZoom.endTime", endTime);
+        //console.log('create chart object');
 
-                console.log(startTime, endTime);
-            });
+        this._chart = echarts.init(this._card, null, { renderer: 'svg' });
+        let chart: echarts.ECharts = this._chart;
+        this._chart.on('datazoom', function (evt) {
+            const option = chart.getOption();
+            const dataZoom: any[] = option.dataZoom as any[];
+            const { startTime, endTime } = dataZoom[0]
+            localStorage.setItem("dataZoom.startTime", startTime);
+            localStorage.setItem("dataZoom.endTime", endTime);
 
-            const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
-            const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
             console.log(startTime, endTime);
-
-            let options = {
-                tooltip: {
-                    trigger: 'axis',
-                    axisPointer: {
-                        type: 'cross'
-                    },
-                    //triggerOn: 'click',
-                    formatter: (params) => {
-                        var xTime = new Date(params[0].axisValue)
-                        let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
-
-                        let chart = this._chart;
-                        const tooltipReducer = (prev, curr) => {
-                            return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
-                        }
-
-                        this._series.forEach((serie, index) => {
-                            const color: CSSResult = unsafeCSS(chart.getVisual({ seriesIndex: index }, 'color'));
-                            const style: CSSResult = css`
-                                display: inline-block;
-                                margin-right: 5px;
-                                border-radius: 10px;
-                                width: 9px;
-                                height: 9px;
-                                background-color: ${color};
-                            `;
-
-                            // TODO: Use binary search to find the closest value
-                            const value: number = serie.data.reduce(tooltipReducer)[1]
-                            tooltip += `<tr><td><span style="${style}"></span></td>`
-                            tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
-                        });
-                        tooltip += `</table>`;
-                        return tooltip;
-                    },
-                    textStyle: {
-                        fontSize: 12
-                    }
-                },
-                xAxis: {
-                    type: 'time',
-                    boundaryGap: false,
-                    triggerEvent: true
-                },
-                yAxis: {
-                    type: 'value'
-                },
-                dataZoom: [
-                    {
-                        type: 'inside',
-                        start: 0,
-                        end: 100
-                    },
-                    {
-                        start: 0,
-                        end: 100
-                    }
-                ]
-            };
-            if (this._config.title) {
-                Array.prototype.concat.call(options, { title: this._config.title })
-            }
-            this._chart.setOption(options);
-            this._chart.resize();
-
-            this.requestData();
         });
+
+        const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
+        const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
+        console.log(startTime, endTime);
+
+        let options = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'cross'
+                },
+                //triggerOn: 'click',
+                formatter: (params) => {
+                    var xTime = new Date(params[0].axisValue)
+                    let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
+
+                    let chart = this._chart;
+                    const tooltipReducer = (prev, curr) => {
+                        return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
+                    }
+
+                    this._series.forEach((serie, index) => {
+                        const color: CSSResult = unsafeCSS(chart.getVisual({ seriesIndex: index }, 'color'));
+                        const style: CSSResult = css`
+                            display: inline-block;
+                            margin-right: 5px;
+                            border-radius: 10px;
+                            width: 9px;
+                            height: 9px;
+                            background-color: ${color};
+                        `;
+
+                        // TODO: Use binary search to find the closest value
+                        const value: number = serie.data.reduce(tooltipReducer)[1]
+                        tooltip += `<tr><td><span style="${style}"></span></td>`
+                        tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
+                    });
+                    tooltip += `</table>`;
+                    return tooltip;
+                },
+                textStyle: {
+                    fontSize: 12
+                }
+            },
+            xAxis: {
+                type: 'time',
+                boundaryGap: false,
+                triggerEvent: true,
+                splitLine: {
+                    lineStyle: {
+                        color: "#484753"
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                splitLine: {
+                    lineStyle: {
+                        color: "#333"
+                    }
+                }
+            },
+            dataZoom: [
+                {
+                    type: 'inside',
+                    start: 0,
+                    end: 100
+                },
+                {
+                    start: 0,
+                    end: 100
+                }
+            ]
+        };
+        if (this._config.title) {
+            Array.prototype.concat.call(options, { title: this._config.title })
+        }
+        this._chart.setOption(options);
+        //this._chart.resize();
+
+        this.requestData();
     }
 
     private formatDate(date: Date): string {
@@ -251,10 +268,10 @@ class PowerGraph extends HTMLElement {
     }
 
     resize() {
-        console.log("resize() >>")
+        console.log("resize()")
         const w = this._card.clientWidth;
         console.log("width: " + w)
-        console.log("resize() <<")
+        this._chart.resize();
     }
 
     getCardSize() {
@@ -382,6 +399,16 @@ class PowerGraph extends HTMLElement {
 
     private getStateClass(entityId) {
         return this._hass.states[entityId]?.attributes?.state_class;
+    }
+
+    connectedCallback() {
+        console.log("connectedCallback");
+        this.createChart();
+        this._resizeObserver.observe(this._card);
+    }
+    disconnectedCallback() {
+        console.log("disconnectedCallback");
+        this._resizeObserver.unobserve(this._card);
     }
 }
 
