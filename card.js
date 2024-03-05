@@ -58783,7 +58783,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     }
     createContent() {
         //console.log("createContent");
-        this._card = document.createElement("div");
+        this._card = document.createElement("ha-card");
         this._card.setAttribute("id", "chart-container");
         var _style = document.createElement("style");
         _style.textContent = `
@@ -58791,6 +58791,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 position: relative;
                 height: 90%;
                 overflow: hidden;
+                border:1px red solid;
             }`;
         this.attachShadow({
             mode: "open"
@@ -58799,7 +58800,6 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     }
     createChart() {
         //console.log("createChart");
-        //console.log('create chart object');
         this._chart = $52bde46803a5e949$export$2cd8252107eb640b(this._card, null, {
             renderer: "svg"
         });
@@ -58815,13 +58815,23 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         const startTime = $1de2f2772a630298$var$toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         const endTime = $1de2f2772a630298$var$toNumber(localStorage.getItem("dataZoom.endTime"), 100);
         console.log(startTime, endTime);
+        const size = this._card.clientWidth * this._card.clientWidth;
+        console.log("size: " + size);
+        //this._config.title = "size: " + size;
+        let smallDevice = this._card.clientWidth * this._card.clientWidth < 300000;
         let options = {
+            grid: {
+                left: "2%",
+                top: "3%",
+                right: "2%",
+                bottom: "30%"
+            },
             tooltip: {
                 trigger: "axis",
+                triggerOn: smallDevice ? "click" : "mousemove|click",
                 axisPointer: {
                     type: "cross"
                 },
-                //triggerOn: 'click',
                 formatter: (params)=>{
                     var xTime = new Date(params[0].axisValue);
                     let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
@@ -58875,29 +58885,37 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 {
                     type: "inside",
                     start: 0,
-                    end: 100
+                    end: 100,
+                    preventDefaultMouseMove: false
                 },
                 {
+                    type: "slider",
                     start: 0,
-                    end: 100
+                    end: 100,
+                    showDetail: false,
+                    emphasis: {
+                        handleStyle: {
+                            borderColor: "red",
+                            color: "red"
+                        }
+                    },
+                    brushStyle: {
+                        color: "rgba(0, 100, 0, 50)"
+                    }
                 }
             ]
         };
-        if (this._config.title) Array.prototype.concat.call(options, {
-            title: this._config.title
-        });
+        if (this._config.title) //console.log("show title");
+        options = {
+            ...options,
+            title: {
+                show: true,
+                text: this._config.title
+            }
+        };
+        console.log(options);
         this._chart.setOption(options);
-        //this._chart.resize();
         this.requestData();
-    }
-    formatDate(date) {
-        const day = date.getDate().toString().padStart(2, "0");
-        const month = (date.getMonth() + 1).toString().padStart(2, "0");
-        const year = date.getFullYear();
-        const hours = date.getHours().toString().padStart(2, "0");
-        const minutes = date.getMinutes().toString().padStart(2, "0");
-        const seconds = date.getSeconds().toString().padStart(2, "0");
-        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
     }
     requestData() {
         //console.log("requestData: " + this._config.entities.length);
@@ -58917,9 +58935,9 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
     resize() {
-        console.log("resize()");
-        const w = this._card.clientWidth;
-        console.log("width: " + w);
+        if (this._chart == null) // Create chart when the card size is known
+        this.createChart();
+        console.log(`resize(${this._card.clientWidth}, ${this._card.clientHeight})`);
         this._chart.resize();
     }
     getCardSize() {
@@ -58973,6 +58991,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 type: "line",
                 smooth: false,
                 symbol: "none",
+                silient: true,
                 //areaStyle: {},
                 data: data
             };
@@ -59028,12 +59047,11 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         return this._hass.states[entityId]?.attributes?.state_class;
     }
     connectedCallback() {
-        console.log("connectedCallback");
-        this.createChart();
+        //console.log("connectedCallback");
         this._resizeObserver.observe(this._card);
     }
     disconnectedCallback() {
-        console.log("disconnectedCallback");
+        //console.log("disconnectedCallback");
         this._resizeObserver.unobserve(this._card);
     }
 }
