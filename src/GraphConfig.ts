@@ -9,12 +9,23 @@ export class GraphConfig {
     autorefresh: string;
     shadow: boolean;
     entities: EntityConfig[];
+    start: Date;
 
     constructor(obj) {
         obj && Object.assign(this, obj);
     }
 
     public validate() {
+        try {
+            if (this.start === undefined) {
+                throw new Error();
+            }
+            this.start = new Date(this.start);
+        } catch (err: any) {
+            this.start = new Date(new Date());
+            this.start.setHours(this.start.getHours() - 2);
+        }
+        console.log("start: " + this.start.toString());
         if (!this.entities) {
             throw new Error('Please define an entity!');
         }

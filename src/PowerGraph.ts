@@ -36,7 +36,6 @@ import { LabelLayout, UniversalTransition } from 'echarts/features';
 import { CanvasRenderer } from 'echarts/renderers';
 
 
-
 // Register the required components
 echarts.use([
     BarChart,
@@ -60,7 +59,31 @@ declare global {
     }
 }
 
+function isNumber(value?: string | number): boolean {
+    return (value != null && value !== '' && !isNaN(Number(value.toString())));
+}
+
+function toNumber(value: string | null, defaultValue: number): number {
+    return value != null && isNumber(value) ? +value : defaultValue;
+}
+
+function subHours(date: Date, hours: number) {
+    const hoursToAdd = hours * 60 * 60 * 1000;
+    date.setTime(date.getTime() - hoursToAdd);
+    return date;
+}
+
 class PowerGraph extends HTMLElement {
+    static TimeRange = class {
+        start: Date;
+        end: Date;
+
+        constructor(start: Date, end: Date) {
+            this.start = start;
+            this.end = end;
+        }
+    };
+
     private _config: GraphConfig;
     private _hass;
     private _elements = { card: Element, style: Element };
@@ -68,16 +91,19 @@ class PowerGraph extends HTMLElement {
     private _chart: echarts.EChartsType;
     private _tid: number = 0;
     private _series: any[] = [];
+    private _range;
 
     constructor() {
         super();
         this.createContent();
+        this._range = new PowerGraph.TimeRange(subHours(new Date(), 100 * 24), new Date());
     }
 
     public setConfig(config: GraphConfig): void {
         //console.log("setConfig");
         this._config = new GraphConfig(config);
         this._config.validate();
+        this._range = new PowerGraph.TimeRange(this._config.start, new Date());
 
         this.clearRefreshInterval();
     }
@@ -102,16 +128,32 @@ class PowerGraph extends HTMLElement {
         this.attachShadow({ mode: "open" });
         this.shadowRoot!.append(_style, this._card);
 
-
-
         this.sleep(100).then(() => {
             //console.log('create chart object');
 
             this._chart = echarts.init(this._card);
+            let chart: echarts.ECharts = this._chart;
+            this._chart.on('datazoom', function (evt) {
+                const option = chart.getOption();
+                const dataZoom: any[] = option.dataZoom as any[];
+                const { startTime, endTime } = dataZoom[0]
+                localStorage.setItem("dataZoom.startTime", startTime);
+                localStorage.setItem("dataZoom.endTime", endTime);
+
+                console.log(startTime, endTime);
+            });
+
+            const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
+            const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
+            console.log(startTime, endTime);
+
             let options = {
                 tooltip: {
                     trigger: 'axis',
-                    triggerOn: 'click',
+                    axisPointer: {
+                        type: 'cross'
+                    },
+                    //triggerOn: 'click',
                     formatter: (params) => {
                         var xTime = new Date(params[0].axisValue)
                         let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
@@ -139,20 +181,15 @@ class PowerGraph extends HTMLElement {
                         });
                         tooltip += `</table>`;
                         return tooltip;
-                    }
-                },
-                toolbox: {
-                    feature: {
-                        dataZoom: {
-                            yAxisIndex: 'none'
-                        },
-                        restore: {},
-                        saveAsImage: {}
+                    },
+                    textStyle: {
+                        fontSize: 12
                     }
                 },
                 xAxis: {
                     type: 'time',
-                    boundaryGap: false
+                    boundaryGap: false,
+                    triggerEvent: true
                 },
                 yAxis: {
                     type: 'value'
@@ -160,11 +197,11 @@ class PowerGraph extends HTMLElement {
                 dataZoom: [
                     {
                         type: 'inside',
-                        start: 70,
+                        start: 0,
                         end: 100
                     },
                     {
-                        start: 70,
+                        start: 0,
                         end: 100
                     }
                 ]
@@ -189,29 +226,26 @@ class PowerGraph extends HTMLElement {
         return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
     }
 
-    private subHours(date, hours) {
-        const hoursToAdd = hours * 60 * 60 * 1000;
-        date.setTime(date.getTime() - hoursToAdd);
-        return date;
-    }
-
     private requestData() {
         //console.log("requestData: " + this._config.entities.length);
 
-        let entities: string[] = [];
+        const entities: string[] = [];
         for (const entity of this._config.entities) {
             entities.push(entity.entity);
         }
 
+        //console.log(this._range);
+        this._range.end = new Date();
+
         const request = {
             type: "history/history_during_period",
-            start_time: this.formatDate(this.subHours(new Date(), 2 * 24)),
-            end_time: this.formatDate(new Date()),
+            start_time: this._range.start.toISOString(),
+            end_time: this._range.end.toISOString(),
             minimal_response: true,
             no_attributes: true,
             entity_ids: entities
         };
-        //console.log(request);
+        console.log(request);
 
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
@@ -284,6 +318,7 @@ class PowerGraph extends HTMLElement {
                 type: 'line',
                 smooth: false,
                 symbol: 'none',
+                //areaStyle: {},
                 data: data
             };
             if (this._config.shadow || entity.shadow) {
@@ -318,7 +353,7 @@ class PowerGraph extends HTMLElement {
             series: this._series
         });
 
-        if (this.isNumber(this._config.autorefresh) && this._tid == 0) {
+        if (isNumber(this._config.autorefresh) && this._tid == 0) {
             //console.log("setInterval");
             this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
         }
@@ -327,10 +362,6 @@ class PowerGraph extends HTMLElement {
     private loaderFailed(error) {
         console.log("Database request failure");
         console.log(error);
-    }
-
-    private isNumber(value?: string | number): boolean {
-        return (value != null && value !== '' && !isNaN(Number(value.toString())));
     }
 
     private clearRefreshInterval() {
