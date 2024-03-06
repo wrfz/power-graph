@@ -1,3 +1,4 @@
+"use strict";
 
 import {
     css,
@@ -11,6 +12,7 @@ import {
 } from "lit";
 
 import { GraphConfig, EntityConfig } from './GraphConfig';
+import { simplify } from './simplify';
 
 import * as echarts from 'echarts/core';
 
@@ -130,7 +132,6 @@ class PowerGraph extends HTMLElement {
                 position: relative;
                 height: 90%;
                 overflow: hidden;
-                border:1px red solid;
             }`
 
         this.attachShadow({ mode: "open" });
@@ -149,17 +150,16 @@ class PowerGraph extends HTMLElement {
             localStorage.setItem("dataZoom.startTime", startTime);
             localStorage.setItem("dataZoom.endTime", endTime);
 
-            console.log(startTime, endTime);
+            //console.log(startTime, endTime);
         });
 
         const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
-        console.log(startTime, endTime);
+        //console.log(startTime, endTime);
 
         const size = this._card.clientWidth * this._card.clientWidth;
-        console.log("size: " + size);
+        //console.log("size: " + size);
 
-        //this._config.title = "size: " + size;
         const smallDevice: boolean = this._card.clientWidth * this._card.clientWidth < 300000
 
         let options = {
@@ -272,7 +272,7 @@ class PowerGraph extends HTMLElement {
                 }
             };
         }
-        console.log(options);
+        //console.log(options);
         this._chart.setOption(options);
 
         this.requestData();
@@ -297,7 +297,7 @@ class PowerGraph extends HTMLElement {
             no_attributes: true,
             entity_ids: entities
         };
-        console.log(request);
+        //console.log(request);
 
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
@@ -343,7 +343,7 @@ class PowerGraph extends HTMLElement {
 
     private dataResponse(result) {
         //console.log("dataResponse >>")
-        console.log(result)
+        //console.log(result)
 
         let thisCard: PowerGraph = this;
 
@@ -361,15 +361,17 @@ class PowerGraph extends HTMLElement {
             let entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
             const arr: DataItem[] = result[entityId];
-            points += arr.length;
             //console.log(a);
 
             let data: number[][] = [];
             for (let i = 1; i < arr.length; i++) {
                 const time: number = Math.round(arr[i].lu * 1000);
-                data.push([time, arr[i].s]);
+                data.push([time, +arr[i].s]);
             }
-            info += `   ${entityId}: ${arr.length}\n`;
+            console.log(data);
+            const simpleData: number[][] = simplify(data, 0.1, false)
+            points += simpleData.length;
+            info += `   ${entityId}: ${simpleData.length}\n`;
 
             const line = {
                 name: entity.name || entity.entity,
@@ -378,7 +380,7 @@ class PowerGraph extends HTMLElement {
                 symbol: 'none',
                 silient: true,
                 //areaStyle: {},
-                data: data
+                data: simpleData
             };
             if (this._config.shadow || entity.shadow) {
                 Object.assign(line, {

@@ -645,6 +645,84 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
 }
 
 
+function $0de2eca6fadd5daa$var$getSqDist(p1, p2) {
+    const dx = p1[0] - p2[0];
+    const dy = p1[1] - p2[1];
+    return dx * dx + dy * dy;
+}
+// square distance from a point to a segment
+function $0de2eca6fadd5daa$var$getSqSegDist(p, p1, p2) {
+    let x = p1[0];
+    let y = p1[1];
+    let dx = p2[0] - x;
+    let dy = p2[1] - y;
+    if (dx !== 0 || dy !== 0) {
+        var t = ((p[0] - x) * dx + (p[1] - y) * dy) / (dx * dx + dy * dy);
+        if (t > 1) {
+            x = p2[0];
+            y = p2[1];
+        } else if (t > 0) {
+            x += dx * t;
+            y += dy * t;
+        }
+    }
+    dx = p[0] - x;
+    dy = p[1] - y;
+    return dx * dx + dy * dy;
+}
+// rest of the code doesn't care about point format
+// basic distance-based simplification
+function $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance) {
+    let prevPoint = points[0];
+    const newPoints = [
+        prevPoint
+    ];
+    let point = null;
+    for(let i = 1, len = points.length; i < len; i++){
+        point = points[i];
+        if ($0de2eca6fadd5daa$var$getSqDist(point, prevPoint) > sqTolerance) {
+            newPoints.push(point);
+            prevPoint = point;
+        }
+    }
+    if (point != null && prevPoint !== point) newPoints.push(point);
+    return newPoints;
+}
+function $0de2eca6fadd5daa$var$simplifyDPStep(points, first, last, sqTolerance, simplified) {
+    let maxSqDist = sqTolerance;
+    let index = 0;
+    for(let i = first + 1; i < last; i++){
+        const sqDist = $0de2eca6fadd5daa$var$getSqSegDist(points[i], points[first], points[last]);
+        if (sqDist > maxSqDist) {
+            index = i;
+            maxSqDist = sqDist;
+        }
+    }
+    if (maxSqDist > sqTolerance) {
+        if (index - first > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, first, index, sqTolerance, simplified);
+        simplified.push(points[index]);
+        if (last - index > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, index, last, sqTolerance, simplified);
+    }
+}
+// simplification using Ramer-Douglas-Peucker algorithm
+function $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, sqTolerance) {
+    var last = points.length - 1;
+    var simplified = [
+        points[0]
+    ];
+    $0de2eca6fadd5daa$var$simplifyDPStep(points, 0, last, sqTolerance, simplified);
+    simplified.push(points[last]);
+    return simplified;
+}
+function $0de2eca6fadd5daa$export$798b53621063651(points, tolerance, highestQuality) {
+    if (points.length <= 2) return points;
+    const sqTolerance = tolerance !== undefined ? tolerance * tolerance : 1;
+    points = highestQuality ? points : $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance);
+    points = $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, sqTolerance);
+    return points;
+}
+
+
 /*
 * Licensed to the Apache Software Foundation (ASF) under one
 * or more contributor license agreements.  See the NOTICE file
@@ -60088,6 +60166,7 @@ var $e9848ff2edce194c$export$9caf76241ca21a11 = function() {
 
 
 
+"use strict";
 // Register the required components
 $6c5e1f02b5ec6904$export$1f96ae73734a86cc([
     (0, $818f71e458e33488$export$4b3e715f166fdd78),
@@ -60160,7 +60239,6 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 position: relative;
                 height: 90%;
                 overflow: hidden;
-                border:1px red solid;
             }`;
         this.attachShadow({
             mode: "open"
@@ -60179,14 +60257,13 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             const { startTime: startTime, endTime: endTime } = dataZoom[0];
             localStorage.setItem("dataZoom.startTime", startTime);
             localStorage.setItem("dataZoom.endTime", endTime);
-            console.log(startTime, endTime);
+        //console.log(startTime, endTime);
         });
         const startTime = $1de2f2772a630298$var$toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         const endTime = $1de2f2772a630298$var$toNumber(localStorage.getItem("dataZoom.endTime"), 100);
-        console.log(startTime, endTime);
+        //console.log(startTime, endTime);
         const size = this._card.clientWidth * this._card.clientWidth;
-        console.log("size: " + size);
-        //this._config.title = "size: " + size;
+        //console.log("size: " + size);
         const smallDevice = this._card.clientWidth * this._card.clientWidth < 300000;
         let options = {
             grid: {
@@ -60294,7 +60371,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 text: this._config.title
             }
         };
-        console.log(options);
+        //console.log(options);
         this._chart.setOption(options);
         this.requestData();
     }
@@ -60312,7 +60389,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             no_attributes: true,
             entity_ids: entities
         };
-        console.log(request);
+        //console.log(request);
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
     resize() {
@@ -60350,7 +60427,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     }
     dataResponse(result) {
         //console.log("dataResponse >>")
-        console.log(result);
+        //console.log(result)
         let thisCard = this;
         let legends = [];
         this._series = [];
@@ -60360,17 +60437,19 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             let entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
             const arr = result[entityId];
-            points += arr.length;
             //console.log(a);
             let data = [];
             for(let i = 1; i < arr.length; i++){
                 const time = Math.round(arr[i].lu * 1000);
                 data.push([
                     time,
-                    arr[i].s
+                    +arr[i].s
                 ]);
             }
-            info += `   ${entityId}: ${arr.length}\n`;
+            console.log(data);
+            const simpleData = (0, $0de2eca6fadd5daa$export$798b53621063651)(data, 0.1, false);
+            points += simpleData.length;
+            info += `   ${entityId}: ${simpleData.length}\n`;
             const line = {
                 name: entity.name || entity.entity,
                 type: "line",
@@ -60378,7 +60457,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 symbol: "none",
                 silient: true,
                 //areaStyle: {},
-                data: data
+                data: simpleData
             };
             if (this._config.shadow || entity.shadow) Object.assign(line, {
                 lineStyle: {
