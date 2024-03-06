@@ -45204,6 +45204,1374 @@ function $a31ac28a19592fc2$export$4b3e715f166fdd78(registers) {
 * KIND, either express or implied.  See the License for the
 * specific language governing permissions and limitations
 * under the License.
+*/ 
+
+
+
+
+function $97e652c68c72ebdd$export$f6339b3d96c5d3d7(resultItem, newElOption) {
+    var existElOption = resultItem.existing;
+    // Set id and type after id assigned.
+    newElOption.id = resultItem.keyInfo.id;
+    !newElOption.type && existElOption && (newElOption.type = existElOption.type);
+    // Set parent id if not specified
+    if (newElOption.parentId == null) {
+        var newElParentOption = newElOption.parentOption;
+        if (newElParentOption) newElOption.parentId = newElParentOption.id;
+        else if (existElOption) newElOption.parentId = existElOption.parentId;
+    }
+    // Clear
+    newElOption.parentOption = null;
+}
+function $97e652c68c72ebdd$var$isSetLoc(obj, props) {
+    var isSet;
+    $6769291029d9c7f0$export$79b2f7037acddd43(props, function(prop) {
+        obj[prop] != null && obj[prop] !== "auto" && (isSet = true);
+    });
+    return isSet;
+}
+function $97e652c68c72ebdd$var$mergeNewElOptionToExist(existList, index, newElOption) {
+    // Update existing options, for `getOption` feature.
+    var newElOptCopy = $6769291029d9c7f0$export$8b58be045bf06082({}, newElOption);
+    var existElOption = existList[index];
+    var $action = newElOption.$action || "merge";
+    if ($action === "merge") {
+        if (existElOption) {
+            var newType = newElOption.type;
+            $6769291029d9c7f0$export$a7a9523472993e97(!newType || existElOption.type === newType, 'Please set $action: "replace" to change `type`');
+            // We can ensure that newElOptCopy and existElOption are not
+            // the same object, so `merge` will not change newElOptCopy.
+            $6769291029d9c7f0$export$4950aa0f605343fb(existElOption, newElOptCopy, true);
+            // Rigid body, use ignoreSize.
+            (0, $d6b95337e2cb7845$export$1754cb91f16ca028)(existElOption, newElOptCopy, {
+                ignoreSize: true
+            });
+            // Will be used in render.
+            (0, $d6b95337e2cb7845$export$7438999faea9b6cc)(newElOption, existElOption);
+            // Copy transition info to new option so it can be used in the transition.
+            // DO IT AFTER merge
+            $97e652c68c72ebdd$var$copyTransitionInfo(newElOption, existElOption);
+            $97e652c68c72ebdd$var$copyTransitionInfo(newElOption, existElOption, "shape");
+            $97e652c68c72ebdd$var$copyTransitionInfo(newElOption, existElOption, "style");
+            $97e652c68c72ebdd$var$copyTransitionInfo(newElOption, existElOption, "extra");
+            // Copy clipPath
+            newElOption.clipPath = existElOption.clipPath;
+        } else existList[index] = newElOptCopy;
+    } else if ($action === "replace") existList[index] = newElOptCopy;
+    else if ($action === "remove") // null will be cleaned later.
+    existElOption && (existList[index] = null);
+}
+var $97e652c68c72ebdd$var$TRANSITION_PROPS_TO_COPY = [
+    "transition",
+    "enterFrom",
+    "leaveTo"
+];
+var $97e652c68c72ebdd$var$ROOT_TRANSITION_PROPS_TO_COPY = $97e652c68c72ebdd$var$TRANSITION_PROPS_TO_COPY.concat([
+    "enterAnimation",
+    "updateAnimation",
+    "leaveAnimation"
+]);
+function $97e652c68c72ebdd$var$copyTransitionInfo(target, source, targetProp) {
+    if (targetProp) {
+        if (!target[targetProp] && source[targetProp]) // TODO avoid creating this empty object when there is no transition configuration.
+        target[targetProp] = {};
+        target = target[targetProp];
+        source = source[targetProp];
+    }
+    if (!target || !source) return;
+    var props = targetProp ? $97e652c68c72ebdd$var$TRANSITION_PROPS_TO_COPY : $97e652c68c72ebdd$var$ROOT_TRANSITION_PROPS_TO_COPY;
+    for(var i = 0; i < props.length; i++){
+        var prop = props[i];
+        if (target[prop] == null && source[prop] != null) target[prop] = source[prop];
+    }
+}
+function $97e652c68c72ebdd$var$setLayoutInfoToExist(existItem, newElOption) {
+    if (!existItem) return;
+    existItem.hv = newElOption.hv = [
+        // Rigid body, don't care about `width`.
+        $97e652c68c72ebdd$var$isSetLoc(newElOption, [
+            "left",
+            "right"
+        ]),
+        // Rigid body, don't care about `height`.
+        $97e652c68c72ebdd$var$isSetLoc(newElOption, [
+            "top",
+            "bottom"
+        ])
+    ];
+    // Give default group size. Otherwise layout error may occur.
+    if (existItem.type === "group") {
+        var existingGroupOpt = existItem;
+        var newGroupOpt = newElOption;
+        existingGroupOpt.width == null && (existingGroupOpt.width = newGroupOpt.width = 0);
+        existingGroupOpt.height == null && (existingGroupOpt.height = newGroupOpt.height = 0);
+    }
+}
+var $97e652c68c72ebdd$export$6d85925da4d2cf23 = /** @class */ function(_super) {
+    (0, $85d3ac27f50b7b80$export$a8ba968b8961cb8a)(GraphicComponentModel, _super);
+    function GraphicComponentModel() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.type = GraphicComponentModel.type;
+        _this.preventAutoZ = true;
+        return _this;
+    }
+    GraphicComponentModel.prototype.mergeOption = function(option, ecModel) {
+        // Prevent default merge to elements
+        var elements = this.option.elements;
+        this.option.elements = null;
+        _super.prototype.mergeOption.call(this, option, ecModel);
+        this.option.elements = elements;
+    };
+    GraphicComponentModel.prototype.optionUpdated = function(newOption, isInit) {
+        var thisOption = this.option;
+        var newList = (isInit ? thisOption : newOption).elements;
+        var existList = thisOption.elements = isInit ? [] : thisOption.elements;
+        var flattenedList = [];
+        this._flatten(newList, flattenedList, null);
+        var mappingResult = $ae51978b3407899c$export$574f818966e4da87(existList, flattenedList, "normalMerge");
+        // Clear elOptionsToUpdate
+        var elOptionsToUpdate = this._elOptionsToUpdate = [];
+        $6769291029d9c7f0$export$79b2f7037acddd43(mappingResult, function(resultItem, index) {
+            var newElOption = resultItem.newOption;
+            $6769291029d9c7f0$export$a7a9523472993e97($6769291029d9c7f0$export$a6cdc56e425d0d0a(newElOption) || resultItem.existing, "Empty graphic option definition");
+            if (!newElOption) return;
+            elOptionsToUpdate.push(newElOption);
+            $97e652c68c72ebdd$export$f6339b3d96c5d3d7(resultItem, newElOption);
+            $97e652c68c72ebdd$var$mergeNewElOptionToExist(existList, index, newElOption);
+            $97e652c68c72ebdd$var$setLayoutInfoToExist(existList[index], newElOption);
+        }, this);
+        // Clean
+        thisOption.elements = $6769291029d9c7f0$export$3dea766d36a8935f(existList, function(item) {
+            // $action should be volatile, otherwise option gotten from
+            // `getOption` will contain unexpected $action.
+            item && delete item.$action;
+            return item != null;
+        });
+    };
+    /**
+   * Convert
+   * [{
+   *  type: 'group',
+   *  id: 'xx',
+   *  children: [{type: 'circle'}, {type: 'polygon'}]
+   * }]
+   * to
+   * [
+   *  {type: 'group', id: 'xx'},
+   *  {type: 'circle', parentId: 'xx'},
+   *  {type: 'polygon', parentId: 'xx'}
+   * ]
+   */ GraphicComponentModel.prototype._flatten = function(optionList, result, parentOption) {
+        $6769291029d9c7f0$export$79b2f7037acddd43(optionList, function(option) {
+            if (!option) return;
+            if (parentOption) option.parentOption = parentOption;
+            result.push(option);
+            var children = option.children;
+            // here we don't judge if option.type is `group`
+            // when new option doesn't provide `type`, it will cause that the children can't be updated.
+            if (children && children.length) this._flatten(children, result, option);
+            // Deleting for JSON output, and for not affecting group creation.
+            delete option.children;
+        }, this);
+    };
+    // FIXME
+    // Pass to view using payload? setOption has a payload?
+    GraphicComponentModel.prototype.useElOptionsToUpdate = function() {
+        var els = this._elOptionsToUpdate;
+        // Clear to avoid render duplicately when zooming.
+        this._elOptionsToUpdate = null;
+        return els;
+    };
+    GraphicComponentModel.type = "graphic";
+    GraphicComponentModel.defaultOption = {
+        elements: []
+    };
+    return GraphicComponentModel;
+}((0, $afd08e678a86ebe7$export$2e2bcd8739ae039));
+
+
+/*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ /**
+ * AUTO-GENERATED FILE. DO NOT MODIFY.
+ */ /*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ 
+
+
+
+
+
+
+
+
+/*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ /**
+ * AUTO-GENERATED FILE. DO NOT MODIFY.
+ */ /*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ 
+var $91c5a1d52c327f29$var$deprecatedLogs = {};
+function $91c5a1d52c327f29$export$3b868abde5eae7d1(style, elType, hasOwnTextContentOption, hasOwnTextConfig) {
+    // Since echarts5, `RectText` is separated from its host element and style.text
+    // does not exist any more. The compat work brings some extra burden on performance.
+    // So we provide:
+    // `legacy: true` force make compat.
+    // `legacy: false`, force do not compat.
+    // `legacy` not set: auto detect whether legacy.
+    //     But in this case we do not compat (difficult to detect and rare case):
+    //     Becuse custom series and graphic component support "merge", users may firstly
+    //     only set `textStrokeWidth` style or secondly only set `text`.
+    return style && (style.legacy || style.legacy !== false && !hasOwnTextContentOption && !hasOwnTextConfig && elType !== "tspan" && (elType === "text" || (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(style, "text")));
+}
+function $91c5a1d52c327f29$export$7748133eaaa8aecc(hostStyle, elType, isNormal) {
+    var srcStyle = hostStyle;
+    var textConfig;
+    var textContent;
+    var textContentStyle;
+    if (elType === "text") textContentStyle = srcStyle;
+    else {
+        textContentStyle = {};
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "text") && (textContentStyle.text = srcStyle.text);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "rich") && (textContentStyle.rich = srcStyle.rich);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "textFill") && (textContentStyle.fill = srcStyle.textFill);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "textStroke") && (textContentStyle.stroke = srcStyle.textStroke);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "fontFamily") && (textContentStyle.fontFamily = srcStyle.fontFamily);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "fontSize") && (textContentStyle.fontSize = srcStyle.fontSize);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "fontStyle") && (textContentStyle.fontStyle = srcStyle.fontStyle);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "fontWeight") && (textContentStyle.fontWeight = srcStyle.fontWeight);
+        textContent = {
+            type: "text",
+            style: textContentStyle,
+            // ec4 does not support rectText trigger.
+            // And when text position is different in normal and emphasis
+            // => hover text trigger emphasis;
+            // => text position changed, leave mouse pointer immediately;
+            // That might cause incorrect state.
+            silent: true
+        };
+        textConfig = {};
+        var hasOwnPos = (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "textPosition");
+        if (isNormal) textConfig.position = hasOwnPos ? srcStyle.textPosition : "inside";
+        else hasOwnPos && (textConfig.position = srcStyle.textPosition);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "textPosition") && (textConfig.position = srcStyle.textPosition);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "textOffset") && (textConfig.offset = srcStyle.textOffset);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "textRotation") && (textConfig.rotation = srcStyle.textRotation);
+        (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(srcStyle, "textDistance") && (textConfig.distance = srcStyle.textDistance);
+    }
+    $91c5a1d52c327f29$var$convertEC4CompatibleRichItem(textContentStyle, hostStyle);
+    (0, $6769291029d9c7f0$export$79b2f7037acddd43)(textContentStyle.rich, function(richItem) {
+        $91c5a1d52c327f29$var$convertEC4CompatibleRichItem(richItem, richItem);
+    });
+    return {
+        textConfig: textConfig,
+        textContent: textContent
+    };
+}
+/**
+ * The result will be set to `out`.
+ */ function $91c5a1d52c327f29$var$convertEC4CompatibleRichItem(out, richItem) {
+    if (!richItem) return;
+    // (1) For simplicity, make textXXX properties (deprecated since ec5) has
+    // higher priority. For example, consider in ec4 `borderColor: 5, textBorderColor: 10`
+    // on a rect means `borderColor: 4` on the rect and `borderColor: 10` on an attached
+    // richText in ec5.
+    // (2) `out === richItem` if and only if `out` is text el or rich item.
+    // So we can overwrite existing props in `out` since textXXX has higher priority.
+    richItem.font = richItem.textFont || richItem.font;
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textStrokeWidth") && (out.lineWidth = richItem.textStrokeWidth);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textAlign") && (out.align = richItem.textAlign);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textVerticalAlign") && (out.verticalAlign = richItem.textVerticalAlign);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textLineHeight") && (out.lineHeight = richItem.textLineHeight);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textWidth") && (out.width = richItem.textWidth);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textHeight") && (out.height = richItem.textHeight);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBackgroundColor") && (out.backgroundColor = richItem.textBackgroundColor);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textPadding") && (out.padding = richItem.textPadding);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBorderColor") && (out.borderColor = richItem.textBorderColor);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBorderWidth") && (out.borderWidth = richItem.textBorderWidth);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBorderRadius") && (out.borderRadius = richItem.textBorderRadius);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBoxShadowColor") && (out.shadowColor = richItem.textBoxShadowColor);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBoxShadowBlur") && (out.shadowBlur = richItem.textBoxShadowBlur);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBoxShadowOffsetX") && (out.shadowOffsetX = richItem.textBoxShadowOffsetX);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textBoxShadowOffsetY") && (out.shadowOffsetY = richItem.textBoxShadowOffsetY);
+}
+function $91c5a1d52c327f29$export$b8ddb75bd1b9b791(itemStl, txStl, txCfg) {
+    var out = itemStl;
+    // See `custom.ts`, a trick to set extra `textPosition` firstly.
+    out.textPosition = out.textPosition || txCfg.position || "inside";
+    txCfg.offset != null && (out.textOffset = txCfg.offset);
+    txCfg.rotation != null && (out.textRotation = txCfg.rotation);
+    txCfg.distance != null && (out.textDistance = txCfg.distance);
+    var isInside = out.textPosition.indexOf("inside") >= 0;
+    var hostFill = itemStl.fill || "#000";
+    $91c5a1d52c327f29$var$convertToEC4RichItem(out, txStl);
+    var textFillNotSet = out.textFill == null;
+    if (isInside) {
+        if (textFillNotSet) {
+            out.textFill = txCfg.insideFill || "#fff";
+            !out.textStroke && txCfg.insideStroke && (out.textStroke = txCfg.insideStroke);
+            !out.textStroke && (out.textStroke = hostFill);
+            out.textStrokeWidth == null && (out.textStrokeWidth = 2);
+        }
+    } else {
+        if (textFillNotSet) out.textFill = itemStl.fill || txCfg.outsideFill || "#000";
+        !out.textStroke && txCfg.outsideStroke && (out.textStroke = txCfg.outsideStroke);
+    }
+    out.text = txStl.text;
+    out.rich = txStl.rich;
+    (0, $6769291029d9c7f0$export$79b2f7037acddd43)(txStl.rich, function(richItem) {
+        $91c5a1d52c327f29$var$convertToEC4RichItem(richItem, richItem);
+    });
+    return out;
+}
+function $91c5a1d52c327f29$var$convertToEC4RichItem(out, richItem) {
+    if (!richItem) return;
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "fill") && (out.textFill = richItem.fill);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "stroke") && (out.textStroke = richItem.fill);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "lineWidth") && (out.textStrokeWidth = richItem.lineWidth);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "font") && (out.font = richItem.font);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "fontStyle") && (out.fontStyle = richItem.fontStyle);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "fontWeight") && (out.fontWeight = richItem.fontWeight);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "fontSize") && (out.fontSize = richItem.fontSize);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "fontFamily") && (out.fontFamily = richItem.fontFamily);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "align") && (out.textAlign = richItem.align);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "verticalAlign") && (out.textVerticalAlign = richItem.verticalAlign);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "lineHeight") && (out.textLineHeight = richItem.lineHeight);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "width") && (out.textWidth = richItem.width);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "height") && (out.textHeight = richItem.height);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "backgroundColor") && (out.textBackgroundColor = richItem.backgroundColor);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "padding") && (out.textPadding = richItem.padding);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "borderColor") && (out.textBorderColor = richItem.borderColor);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "borderWidth") && (out.textBorderWidth = richItem.borderWidth);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "borderRadius") && (out.textBorderRadius = richItem.borderRadius);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "shadowColor") && (out.textBoxShadowColor = richItem.shadowColor);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "shadowBlur") && (out.textBoxShadowBlur = richItem.shadowBlur);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "shadowOffsetX") && (out.textBoxShadowOffsetX = richItem.shadowOffsetX);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "shadowOffsetY") && (out.textBoxShadowOffsetY = richItem.shadowOffsetY);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textShadowColor") && (out.textShadowColor = richItem.textShadowColor);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textShadowBlur") && (out.textShadowBlur = richItem.textShadowBlur);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textShadowOffsetX") && (out.textShadowOffsetX = richItem.textShadowOffsetX);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(richItem, "textShadowOffsetY") && (out.textShadowOffsetY = richItem.textShadowOffsetY);
+}
+function $91c5a1d52c327f29$export$606a5c06d13e04b6(deprecated, insteadApproach) {
+    var key = deprecated + "^_^" + insteadApproach;
+    if (!$91c5a1d52c327f29$var$deprecatedLogs[key]) {
+        console.warn('[ECharts] DEPRECATED: "' + deprecated + '" has been deprecated. ' + insteadApproach);
+        $91c5a1d52c327f29$var$deprecatedLogs[key] = true;
+    }
+}
+
+
+/*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ /**
+ * AUTO-GENERATED FILE. DO NOT MODIFY.
+ */ /*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ 
+
+
+
+
+
+
+
+var $1729ddaf47f245fa$var$LEGACY_TRANSFORM_PROPS_MAP = {
+    position: [
+        "x",
+        "y"
+    ],
+    scale: [
+        "scaleX",
+        "scaleY"
+    ],
+    origin: [
+        "originX",
+        "originY"
+    ]
+};
+var $1729ddaf47f245fa$var$LEGACY_TRANSFORM_PROPS = (0, $6769291029d9c7f0$export$ed97f33186d4b816)($1729ddaf47f245fa$var$LEGACY_TRANSFORM_PROPS_MAP);
+var $1729ddaf47f245fa$var$TRANSFORM_PROPS_MAP = (0, $6769291029d9c7f0$export$533b26079ad0b4b)((0, $3c520ab8c5924dc4$export$98ab6203ec3396e2), function(obj, key) {
+    obj[key] = 1;
+    return obj;
+}, {});
+var $1729ddaf47f245fa$var$transformPropNamesStr = (0, $3c520ab8c5924dc4$export$98ab6203ec3396e2).join(", ");
+var $1729ddaf47f245fa$export$9a911ad86e905b13 = [
+    "",
+    "style",
+    "shape",
+    "extra"
+];
+var $1729ddaf47f245fa$var$transitionInnerStore = (0, $ae51978b3407899c$export$64df9f8d92ae083f)();
+function $1729ddaf47f245fa$var$getElementAnimationConfig(animationType, el, elOption, parentModel, dataIndex) {
+    var animationProp = animationType + "Animation";
+    var config = (0, $993ef3c43951e35d$export$5cc7add7ab591d0a)(animationType, parentModel, dataIndex) || {};
+    var userDuring = $1729ddaf47f245fa$var$transitionInnerStore(el).userDuring;
+    // Only set when duration is > 0 and it's need to be animated.
+    if (config.duration > 0) {
+        // For simplicity, if during not specified, the previous during will not work any more.
+        config.during = userDuring ? (0, $6769291029d9c7f0$export$2385a24977818dd0)($1729ddaf47f245fa$var$duringCall, {
+            el: el,
+            userDuring: userDuring
+        }) : null;
+        config.setToFinal = true;
+        config.scope = animationType;
+    }
+    (0, $6769291029d9c7f0$export$8b58be045bf06082)(config, elOption[animationProp]);
+    return config;
+}
+function $1729ddaf47f245fa$export$4342b281b9b5d77e(el, elOption, animatableModel, opts) {
+    opts = opts || {};
+    var dataIndex = opts.dataIndex, isInit = opts.isInit, clearStyle = opts.clearStyle;
+    var hasAnimation = animatableModel.isAnimationEnabled();
+    // Save the meta info for further morphing. Like apply on the sub morphing elements.
+    var store = $1729ddaf47f245fa$var$transitionInnerStore(el);
+    var styleOpt = elOption.style;
+    store.userDuring = elOption.during;
+    var transFromProps = {};
+    var propsToSet = {};
+    $1729ddaf47f245fa$var$prepareTransformAllPropsFinal(el, elOption, propsToSet);
+    $1729ddaf47f245fa$var$prepareShapeOrExtraAllPropsFinal("shape", elOption, propsToSet);
+    $1729ddaf47f245fa$var$prepareShapeOrExtraAllPropsFinal("extra", elOption, propsToSet);
+    if (!isInit && hasAnimation) {
+        $1729ddaf47f245fa$var$prepareTransformTransitionFrom(el, elOption, transFromProps);
+        $1729ddaf47f245fa$var$prepareShapeOrExtraTransitionFrom("shape", el, elOption, transFromProps);
+        $1729ddaf47f245fa$var$prepareShapeOrExtraTransitionFrom("extra", el, elOption, transFromProps);
+        $1729ddaf47f245fa$var$prepareStyleTransitionFrom(el, elOption, styleOpt, transFromProps);
+    }
+    propsToSet.style = styleOpt;
+    $1729ddaf47f245fa$var$applyPropsDirectly(el, propsToSet, clearStyle);
+    $1729ddaf47f245fa$var$applyMiscProps(el, elOption);
+    if (hasAnimation) {
+        if (isInit) {
+            var enterFromProps_1 = {};
+            (0, $6769291029d9c7f0$export$79b2f7037acddd43)($1729ddaf47f245fa$export$9a911ad86e905b13, function(propName) {
+                var prop = propName ? elOption[propName] : elOption;
+                if (prop && prop.enterFrom) {
+                    if (propName) enterFromProps_1[propName] = enterFromProps_1[propName] || {};
+                    (0, $6769291029d9c7f0$export$8b58be045bf06082)(propName ? enterFromProps_1[propName] : enterFromProps_1, prop.enterFrom);
+                }
+            });
+            var config = $1729ddaf47f245fa$var$getElementAnimationConfig("enter", el, elOption, animatableModel, dataIndex);
+            if (config.duration > 0) el.animateFrom(enterFromProps_1, config);
+        } else $1729ddaf47f245fa$var$applyPropsTransition(el, elOption, dataIndex || 0, animatableModel, transFromProps);
+    }
+    // Store leave to be used in leave transition.
+    $1729ddaf47f245fa$export$a6f11bb1cb100e2a(el, elOption);
+    styleOpt ? el.dirty() : el.markRedraw();
+}
+function $1729ddaf47f245fa$export$a6f11bb1cb100e2a(el, elOption) {
+    // Try merge to previous set leaveTo
+    var leaveToProps = $1729ddaf47f245fa$var$transitionInnerStore(el).leaveToProps;
+    for(var i = 0; i < $1729ddaf47f245fa$export$9a911ad86e905b13.length; i++){
+        var propName = $1729ddaf47f245fa$export$9a911ad86e905b13[i];
+        var prop = propName ? elOption[propName] : elOption;
+        if (prop && prop.leaveTo) {
+            if (!leaveToProps) leaveToProps = $1729ddaf47f245fa$var$transitionInnerStore(el).leaveToProps = {};
+            if (propName) leaveToProps[propName] = leaveToProps[propName] || {};
+            (0, $6769291029d9c7f0$export$8b58be045bf06082)(propName ? leaveToProps[propName] : leaveToProps, prop.leaveTo);
+        }
+    }
+}
+function $1729ddaf47f245fa$export$15575b6d82d35bb3(el, elOption, animatableModel, onRemove) {
+    if (el) {
+        var parent_1 = el.parent;
+        var leaveToProps = $1729ddaf47f245fa$var$transitionInnerStore(el).leaveToProps;
+        if (leaveToProps) {
+            // TODO TODO use leave after leaveAnimation in series is introduced
+            // TODO Data index?
+            var config = $1729ddaf47f245fa$var$getElementAnimationConfig("update", el, elOption, animatableModel, 0);
+            config.done = function() {
+                parent_1.remove(el);
+                onRemove && onRemove();
+            };
+            el.animateTo(leaveToProps, config);
+        } else {
+            parent_1.remove(el);
+            onRemove && onRemove();
+        }
+    }
+}
+function $1729ddaf47f245fa$export$6f3361b4b8d7a8ba(transition) {
+    return transition === "all";
+}
+function $1729ddaf47f245fa$var$applyPropsDirectly(el, // Can be null/undefined
+allPropsFinal, clearStyle) {
+    var styleOpt = allPropsFinal.style;
+    if (!el.isGroup && styleOpt) {
+        if (clearStyle) {
+            el.useStyle({});
+            // When style object changed, how to trade the existing animation?
+            // It is probably complicated and not needed to cover all the cases.
+            // But still need consider the case:
+            // (1) When using init animation on `style.opacity`, and before the animation
+            //     ended users triggers an update by mousewhel. At that time the init
+            //     animation should better be continued rather than terminated.
+            //     So after `useStyle` called, we should change the animation target manually
+            //     to continue the effect of the init animation.
+            // (2) PENDING: If the previous animation targeted at a `val1`, and currently we need
+            //     to update the value to `val2` and no animation declared, should be terminate
+            //     the previous animation or just modify the target of the animation?
+            //     Therotically That will happen not only on `style` but also on `shape` and
+            //     `transfrom` props. But we haven't handle this case at present yet.
+            // (3) PENDING: Is it proper to visit `animators` and `targetName`?
+            var animators = el.animators;
+            for(var i = 0; i < animators.length; i++){
+                var animator = animators[i];
+                // targetName is the "topKey".
+                if (animator.targetName === "style") animator.changeTarget(el.style);
+            }
+        }
+        el.setStyle(styleOpt);
+    }
+    if (allPropsFinal) {
+        // Not set style here.
+        allPropsFinal.style = null;
+        // Set el to the final state firstly.
+        allPropsFinal && el.attr(allPropsFinal);
+        allPropsFinal.style = styleOpt;
+    }
+}
+function $1729ddaf47f245fa$var$applyPropsTransition(el, elOption, dataIndex, model, // Can be null/undefined
+transFromProps) {
+    if (transFromProps) {
+        var config = $1729ddaf47f245fa$var$getElementAnimationConfig("update", el, elOption, model, dataIndex);
+        if (config.duration > 0) el.animateFrom(transFromProps, config);
+    }
+}
+function $1729ddaf47f245fa$var$applyMiscProps(el, elOption) {
+    // Merge by default.
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(elOption, "silent") && (el.silent = elOption.silent);
+    (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(elOption, "ignore") && (el.ignore = elOption.ignore);
+    if (el instanceof (0, $ed4b0bc09419a114$export$2e2bcd8739ae039)) (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(elOption, "invisible") && (el.invisible = elOption.invisible);
+    if (el instanceof (0, $de7b87e96dbf2949$export$2e2bcd8739ae039)) (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(elOption, "autoBatch") && (el.autoBatch = elOption.autoBatch);
+}
+// Use it to avoid it be exposed to user.
+var $1729ddaf47f245fa$var$tmpDuringScope = {};
+var $1729ddaf47f245fa$var$transitionDuringAPI = {
+    // Usually other props do not need to be changed in animation during.
+    setTransform: function(key, val) {
+        (0, $6769291029d9c7f0$export$a7a9523472993e97)((0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)($1729ddaf47f245fa$var$TRANSFORM_PROPS_MAP, key), "Only " + $1729ddaf47f245fa$var$transformPropNamesStr + " available in `setTransform`.");
+        $1729ddaf47f245fa$var$tmpDuringScope.el[key] = val;
+        return this;
+    },
+    getTransform: function(key) {
+        (0, $6769291029d9c7f0$export$a7a9523472993e97)((0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)($1729ddaf47f245fa$var$TRANSFORM_PROPS_MAP, key), "Only " + $1729ddaf47f245fa$var$transformPropNamesStr + " available in `getTransform`.");
+        return $1729ddaf47f245fa$var$tmpDuringScope.el[key];
+    },
+    setShape: function(key, val) {
+        $1729ddaf47f245fa$var$assertNotReserved(key);
+        var el = $1729ddaf47f245fa$var$tmpDuringScope.el;
+        var shape = el.shape || (el.shape = {});
+        shape[key] = val;
+        el.dirtyShape && el.dirtyShape();
+        return this;
+    },
+    getShape: function(key) {
+        $1729ddaf47f245fa$var$assertNotReserved(key);
+        var shape = $1729ddaf47f245fa$var$tmpDuringScope.el.shape;
+        if (shape) return shape[key];
+    },
+    setStyle: function(key, val) {
+        $1729ddaf47f245fa$var$assertNotReserved(key);
+        var el = $1729ddaf47f245fa$var$tmpDuringScope.el;
+        var style = el.style;
+        if (style) {
+            if ((0, $6769291029d9c7f0$export$7d667b9a0c48c975)(val)) (0, $901f0f0d953f8cf5$export$c106dd0671a0fc2d)("style." + key + " must not be assigned with NaN.");
+            style[key] = val;
+            el.dirtyStyle && el.dirtyStyle();
+        }
+        return this;
+    },
+    getStyle: function(key) {
+        $1729ddaf47f245fa$var$assertNotReserved(key);
+        var style = $1729ddaf47f245fa$var$tmpDuringScope.el.style;
+        if (style) return style[key];
+    },
+    setExtra: function(key, val) {
+        $1729ddaf47f245fa$var$assertNotReserved(key);
+        var extra = $1729ddaf47f245fa$var$tmpDuringScope.el.extra || ($1729ddaf47f245fa$var$tmpDuringScope.el.extra = {});
+        extra[key] = val;
+        return this;
+    },
+    getExtra: function(key) {
+        $1729ddaf47f245fa$var$assertNotReserved(key);
+        var extra = $1729ddaf47f245fa$var$tmpDuringScope.el.extra;
+        if (extra) return extra[key];
+    }
+};
+function $1729ddaf47f245fa$var$assertNotReserved(key) {
+    if (key === "transition" || key === "enterFrom" || key === "leaveTo") throw new Error('key must not be "' + key + '"');
+}
+function $1729ddaf47f245fa$var$duringCall() {
+    // Do not provide "percent" until some requirements come.
+    // Because consider thies case:
+    // enterFrom: {x: 100, y: 30}, transition: 'x'.
+    // And enter duration is different from update duration.
+    // Thus it might be confused about the meaning of "percent" in during callback.
+    var scope = this;
+    var el = scope.el;
+    if (!el) return;
+    // If el is remove from zr by reason like legend, during still need to called,
+    // because el will be added back to zr and the prop value should not be incorrect.
+    var latestUserDuring = $1729ddaf47f245fa$var$transitionInnerStore(el).userDuring;
+    var scopeUserDuring = scope.userDuring;
+    // Ensured a during is only called once in each animation frame.
+    // If a during is called multiple times in one frame, maybe some users' calculation logic
+    // might be wrong (not sure whether this usage exists).
+    // The case of a during might be called twice can be: by default there is a animator for
+    // 'x', 'y' when init. Before the init animation finished, call `setOption` to start
+    // another animators for 'style'/'shape'/'extra'.
+    if (latestUserDuring !== scopeUserDuring) {
+        // release
+        scope.el = scope.userDuring = null;
+        return;
+    }
+    $1729ddaf47f245fa$var$tmpDuringScope.el = el;
+    // Give no `this` to user in "during" calling.
+    scopeUserDuring($1729ddaf47f245fa$var$transitionDuringAPI);
+// FIXME: if in future meet the case that some prop will be both modified in `during` and `state`,
+// consider the issue that the prop might be incorrect when return to "normal" state.
+}
+function $1729ddaf47f245fa$var$prepareShapeOrExtraTransitionFrom(mainAttr, fromEl, elOption, transFromProps) {
+    var attrOpt = elOption[mainAttr];
+    if (!attrOpt) return;
+    var elPropsInAttr = fromEl[mainAttr];
+    var transFromPropsInAttr;
+    if (elPropsInAttr) {
+        var transition = elOption.transition;
+        var attrTransition = attrOpt.transition;
+        if (attrTransition) {
+            !transFromPropsInAttr && (transFromPropsInAttr = transFromProps[mainAttr] = {});
+            if ($1729ddaf47f245fa$export$6f3361b4b8d7a8ba(attrTransition)) (0, $6769291029d9c7f0$export$8b58be045bf06082)(transFromPropsInAttr, elPropsInAttr);
+            else {
+                var transitionKeys = (0, $ae51978b3407899c$export$4f07b212a02c8051)(attrTransition);
+                for(var i = 0; i < transitionKeys.length; i++){
+                    var key = transitionKeys[i];
+                    var elVal = elPropsInAttr[key];
+                    transFromPropsInAttr[key] = elVal;
+                }
+            }
+        } else if ($1729ddaf47f245fa$export$6f3361b4b8d7a8ba(transition) || (0, $6769291029d9c7f0$export$305f7d4e9d4624f2)(transition, mainAttr) >= 0) {
+            !transFromPropsInAttr && (transFromPropsInAttr = transFromProps[mainAttr] = {});
+            var elPropsInAttrKeys = (0, $6769291029d9c7f0$export$ed97f33186d4b816)(elPropsInAttr);
+            for(var i = 0; i < elPropsInAttrKeys.length; i++){
+                var key = elPropsInAttrKeys[i];
+                var elVal = elPropsInAttr[key];
+                if ($1729ddaf47f245fa$var$isNonStyleTransitionEnabled(attrOpt[key], elVal)) transFromPropsInAttr[key] = elVal;
+            }
+        }
+    }
+}
+function $1729ddaf47f245fa$var$prepareShapeOrExtraAllPropsFinal(mainAttr, elOption, allProps) {
+    var attrOpt = elOption[mainAttr];
+    if (!attrOpt) return;
+    var allPropsInAttr = allProps[mainAttr] = {};
+    var keysInAttr = (0, $6769291029d9c7f0$export$ed97f33186d4b816)(attrOpt);
+    for(var i = 0; i < keysInAttr.length; i++){
+        var key = keysInAttr[i];
+        // To avoid share one object with different element, and
+        // to avoid user modify the object inexpectedly, have to clone.
+        allPropsInAttr[key] = (0, $48606df59511bd96$export$c5e92b7f105af84e)(attrOpt[key]);
+    }
+}
+function $1729ddaf47f245fa$var$prepareTransformTransitionFrom(el, elOption, transFromProps) {
+    var transition = elOption.transition;
+    var transitionKeys = $1729ddaf47f245fa$export$6f3361b4b8d7a8ba(transition) ? (0, $3c520ab8c5924dc4$export$98ab6203ec3396e2) : (0, $ae51978b3407899c$export$4f07b212a02c8051)(transition || []);
+    for(var i = 0; i < transitionKeys.length; i++){
+        var key = transitionKeys[i];
+        if (key === "style" || key === "shape" || key === "extra") continue;
+        var elVal = el[key];
+        $1729ddaf47f245fa$var$checkTransformPropRefer(key, "el.transition");
+        // Do not clone, animator will perform that clone.
+        transFromProps[key] = elVal;
+    }
+}
+function $1729ddaf47f245fa$var$prepareTransformAllPropsFinal(el, elOption, allProps) {
+    for(var i = 0; i < $1729ddaf47f245fa$var$LEGACY_TRANSFORM_PROPS.length; i++){
+        var legacyName = $1729ddaf47f245fa$var$LEGACY_TRANSFORM_PROPS[i];
+        var xyName = $1729ddaf47f245fa$var$LEGACY_TRANSFORM_PROPS_MAP[legacyName];
+        var legacyArr = elOption[legacyName];
+        if (legacyArr) {
+            allProps[xyName[0]] = legacyArr[0];
+            allProps[xyName[1]] = legacyArr[1];
+        }
+    }
+    for(var i = 0; i < (0, $3c520ab8c5924dc4$export$98ab6203ec3396e2).length; i++){
+        var key = (0, $3c520ab8c5924dc4$export$98ab6203ec3396e2)[i];
+        if (elOption[key] != null) allProps[key] = elOption[key];
+    }
+}
+function $1729ddaf47f245fa$var$prepareStyleTransitionFrom(fromEl, elOption, styleOpt, transFromProps) {
+    if (!styleOpt) return;
+    var fromElStyle = fromEl.style;
+    var transFromStyleProps;
+    if (fromElStyle) {
+        var styleTransition = styleOpt.transition;
+        var elTransition = elOption.transition;
+        if (styleTransition && !$1729ddaf47f245fa$export$6f3361b4b8d7a8ba(styleTransition)) {
+            var transitionKeys = (0, $ae51978b3407899c$export$4f07b212a02c8051)(styleTransition);
+            !transFromStyleProps && (transFromStyleProps = transFromProps.style = {});
+            for(var i = 0; i < transitionKeys.length; i++){
+                var key = transitionKeys[i];
+                var elVal = fromElStyle[key];
+                // Do not clone, see `checkNonStyleTansitionRefer`.
+                transFromStyleProps[key] = elVal;
+            }
+        } else if (fromEl.getAnimationStyleProps && ($1729ddaf47f245fa$export$6f3361b4b8d7a8ba(elTransition) || $1729ddaf47f245fa$export$6f3361b4b8d7a8ba(styleTransition) || (0, $6769291029d9c7f0$export$305f7d4e9d4624f2)(elTransition, "style") >= 0)) {
+            var animationProps = fromEl.getAnimationStyleProps();
+            var animationStyleProps = animationProps ? animationProps.style : null;
+            if (animationStyleProps) {
+                !transFromStyleProps && (transFromStyleProps = transFromProps.style = {});
+                var styleKeys = (0, $6769291029d9c7f0$export$ed97f33186d4b816)(styleOpt);
+                for(var i = 0; i < styleKeys.length; i++){
+                    var key = styleKeys[i];
+                    if (animationStyleProps[key]) {
+                        var elVal = fromElStyle[key];
+                        transFromStyleProps[key] = elVal;
+                    }
+                }
+            }
+        }
+    }
+}
+function $1729ddaf47f245fa$var$isNonStyleTransitionEnabled(optVal, elVal) {
+    // The same as `checkNonStyleTansitionRefer`.
+    return !(0, $6769291029d9c7f0$export$1e2f57719e155213)(optVal) ? optVal != null && isFinite(optVal) : optVal !== elVal;
+}
+var $1729ddaf47f245fa$var$checkTransformPropRefer;
+$1729ddaf47f245fa$var$checkTransformPropRefer = function(key, usedIn) {
+    if (!(0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)($1729ddaf47f245fa$var$TRANSFORM_PROPS_MAP, key)) (0, $901f0f0d953f8cf5$export$c106dd0671a0fc2d)("Prop `" + key + "` is not a permitted in `" + usedIn + "`. " + "Only `" + (0, $6769291029d9c7f0$export$ed97f33186d4b816)($1729ddaf47f245fa$var$TRANSFORM_PROPS_MAP).join("`, `") + "` are permitted.");
+};
+
+
+
+/*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ /**
+ * AUTO-GENERATED FILE. DO NOT MODIFY.
+ */ /*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ 
+
+
+
+
+var $52f878fa10fd9aeb$var$getStateToRestore = (0, $ae51978b3407899c$export$64df9f8d92ae083f)();
+var $52f878fa10fd9aeb$var$KEYFRAME_EXCLUDE_KEYS = [
+    "percent",
+    "easing",
+    "shape",
+    "style",
+    "extra"
+];
+function $52f878fa10fd9aeb$export$9e5c70edf1ec0cb4(el) {
+    // Stop previous keyframe animation.
+    el.stopAnimation("keyframe");
+    // Restore
+    el.attr($52f878fa10fd9aeb$var$getStateToRestore(el));
+}
+function $52f878fa10fd9aeb$export$b0aa6a5f01693fa4(el, animationOpts, animatableModel) {
+    if (!animatableModel.isAnimationEnabled() || !animationOpts) return;
+    if ((0, $6769291029d9c7f0$export$43bee75e5e14138e)(animationOpts)) {
+        (0, $6769291029d9c7f0$export$79b2f7037acddd43)(animationOpts, function(singleAnimationOpts) {
+            $52f878fa10fd9aeb$export$b0aa6a5f01693fa4(el, singleAnimationOpts, animatableModel);
+        });
+        return;
+    }
+    var keyframes = animationOpts.keyframes;
+    var duration = animationOpts.duration;
+    if (animatableModel && duration == null) {
+        // Default to use duration of config.
+        // NOTE: animation config from payload will be ignored because they are mainly for transitions.
+        var config = (0, $993ef3c43951e35d$export$5cc7add7ab591d0a)("enter", animatableModel, 0);
+        duration = config && config.duration;
+    }
+    if (!keyframes || !duration) return;
+    var stateToRestore = $52f878fa10fd9aeb$var$getStateToRestore(el);
+    (0, $6769291029d9c7f0$export$79b2f7037acddd43)((0, $1729ddaf47f245fa$export$9a911ad86e905b13), function(targetPropName) {
+        if (targetPropName && !el[targetPropName]) return;
+        var animator;
+        var endFrameIsSet = false;
+        // Sort keyframes by percent.
+        keyframes.sort(function(a, b) {
+            return a.percent - b.percent;
+        });
+        (0, $6769291029d9c7f0$export$79b2f7037acddd43)(keyframes, function(kf) {
+            // Stop current animation.
+            var animators = el.animators;
+            var kfValues = targetPropName ? kf[targetPropName] : kf;
+            if (kf.percent >= 1) endFrameIsSet = true;
+            if (!kfValues) return;
+            var propKeys = (0, $6769291029d9c7f0$export$ed97f33186d4b816)(kfValues);
+            if (!targetPropName) // PENDING performance?
+            propKeys = (0, $6769291029d9c7f0$export$3dea766d36a8935f)(propKeys, function(key) {
+                return (0, $6769291029d9c7f0$export$305f7d4e9d4624f2)($52f878fa10fd9aeb$var$KEYFRAME_EXCLUDE_KEYS, key) < 0;
+            });
+            if (!propKeys.length) return;
+            if (!animator) {
+                animator = el.animate(targetPropName, animationOpts.loop, true);
+                animator.scope = "keyframe";
+            }
+            for(var i = 0; i < animators.length; i++)// Stop all other animation that is not keyframe.
+            if (animators[i] !== animator && animators[i].targetName === animator.targetName) animators[i].stopTracks(propKeys);
+            targetPropName && (stateToRestore[targetPropName] = stateToRestore[targetPropName] || {});
+            var savedTarget = targetPropName ? stateToRestore[targetPropName] : stateToRestore;
+            (0, $6769291029d9c7f0$export$79b2f7037acddd43)(propKeys, function(key) {
+                // Save original value.
+                savedTarget[key] = ((targetPropName ? el[targetPropName] : el) || {})[key];
+            });
+            animator.whenWithKeys(duration * kf.percent, kfValues, propKeys, kf.easing);
+        });
+        if (!animator) return;
+        if (!endFrameIsSet) (0, $901f0f0d953f8cf5$export$c106dd0671a0fc2d)("End frame with percent: 1 is missing in the keyframeAnimation.", true);
+        animator.delay(animationOpts.delay || 0).duration(duration).start(animationOpts.easing);
+    });
+}
+
+
+var $b7e13237838ae60e$var$nonShapeGraphicElements = {
+    // Reserved but not supported in graphic component.
+    path: null,
+    compoundPath: null,
+    // Supported in graphic component.
+    group: $368225df59b09601$export$2e2bcd8739ae039,
+    image: $cf1e13fd7fa43dd2$export$2e2bcd8739ae039,
+    text: $69f8539f606ac4d1$export$2e2bcd8739ae039
+};
+var $b7e13237838ae60e$export$4ae363f1d88fb658 = $ae51978b3407899c$export$64df9f8d92ae083f();
+// ------------------------
+// View
+// ------------------------
+var $b7e13237838ae60e$export$1132c9ab9ad80748 = /** @class */ function(_super) {
+    (0, $85d3ac27f50b7b80$export$a8ba968b8961cb8a)(GraphicComponentView, _super);
+    function GraphicComponentView() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.type = GraphicComponentView.type;
+        return _this;
+    }
+    GraphicComponentView.prototype.init = function() {
+        this._elMap = $6769291029d9c7f0$export$55f8aa7ef875b0a4();
+    };
+    GraphicComponentView.prototype.render = function(graphicModel, ecModel, api) {
+        // Having leveraged between use cases and algorithm complexity, a very
+        // simple layout mechanism is used:
+        // The size(width/height) can be determined by itself or its parent (not
+        // implemented yet), but can not by its children. (Top-down travel)
+        // The location(x/y) can be determined by the bounding rect of itself
+        // (can including its descendants or not) and the size of its parent.
+        // (Bottom-up travel)
+        // When `chart.clear()` or `chart.setOption({...}, true)` with the same id,
+        // view will be reused.
+        if (graphicModel !== this._lastGraphicModel) this._clear();
+        this._lastGraphicModel = graphicModel;
+        this._updateElements(graphicModel);
+        this._relocate(graphicModel, api);
+    };
+    /**
+   * Update graphic elements.
+   */ GraphicComponentView.prototype._updateElements = function(graphicModel) {
+        var elOptionsToUpdate = graphicModel.useElOptionsToUpdate();
+        if (!elOptionsToUpdate) return;
+        var elMap = this._elMap;
+        var rootGroup = this.group;
+        var globalZ = graphicModel.get("z");
+        var globalZLevel = graphicModel.get("zlevel");
+        // Top-down tranverse to assign graphic settings to each elements.
+        $6769291029d9c7f0$export$79b2f7037acddd43(elOptionsToUpdate, function(elOption) {
+            var id = $ae51978b3407899c$export$fb1a222ba5dd6e51(elOption.id, null);
+            var elExisting = id != null ? elMap.get(id) : null;
+            var parentId = $ae51978b3407899c$export$fb1a222ba5dd6e51(elOption.parentId, null);
+            var targetElParent = parentId != null ? elMap.get(parentId) : rootGroup;
+            var elType = elOption.type;
+            var elOptionStyle = elOption.style;
+            if (elType === "text" && elOptionStyle) // In top/bottom mode, textVerticalAlign should not be used, which cause
+            // inaccurately locating.
+            {
+                if (elOption.hv && elOption.hv[1]) elOptionStyle.textVerticalAlign = elOptionStyle.textBaseline = elOptionStyle.verticalAlign = elOptionStyle.align = null;
+            }
+            var textContentOption = elOption.textContent;
+            var textConfig = elOption.textConfig;
+            if (elOptionStyle && (0, $91c5a1d52c327f29$export$3b868abde5eae7d1)(elOptionStyle, elType, !!textConfig, !!textContentOption)) {
+                var convertResult = (0, $91c5a1d52c327f29$export$7748133eaaa8aecc)(elOptionStyle, elType, true);
+                if (!textConfig && convertResult.textConfig) textConfig = elOption.textConfig = convertResult.textConfig;
+                if (!textContentOption && convertResult.textContent) textContentOption = convertResult.textContent;
+            }
+            // Remove unnecessary props to avoid potential problems.
+            var elOptionCleaned = $b7e13237838ae60e$var$getCleanedElOption(elOption);
+            elExisting && $6769291029d9c7f0$export$a7a9523472993e97(targetElParent === elExisting.parent, "Changing parent is not supported.");
+            var $action = elOption.$action || "merge";
+            var isMerge = $action === "merge";
+            var isReplace = $action === "replace";
+            if (isMerge) {
+                var isInit = !elExisting;
+                var el_1 = elExisting;
+                if (isInit) el_1 = $b7e13237838ae60e$var$createEl(id, targetElParent, elOption.type, elMap);
+                else {
+                    el_1 && ($b7e13237838ae60e$export$4ae363f1d88fb658(el_1).isNew = false);
+                    // Stop and restore before update any other attributes.
+                    (0, $52f878fa10fd9aeb$export$9e5c70edf1ec0cb4)(el_1);
+                }
+                if (el_1) {
+                    (0, $1729ddaf47f245fa$export$4342b281b9b5d77e)(el_1, elOptionCleaned, graphicModel, {
+                        isInit: isInit
+                    });
+                    $b7e13237838ae60e$var$updateCommonAttrs(el_1, elOption, globalZ, globalZLevel);
+                }
+            } else if (isReplace) {
+                $b7e13237838ae60e$var$removeEl(elExisting, elOption, elMap, graphicModel);
+                var el_2 = $b7e13237838ae60e$var$createEl(id, targetElParent, elOption.type, elMap);
+                if (el_2) {
+                    (0, $1729ddaf47f245fa$export$4342b281b9b5d77e)(el_2, elOptionCleaned, graphicModel, {
+                        isInit: true
+                    });
+                    $b7e13237838ae60e$var$updateCommonAttrs(el_2, elOption, globalZ, globalZLevel);
+                }
+            } else if ($action === "remove") {
+                (0, $1729ddaf47f245fa$export$a6f11bb1cb100e2a)(elExisting, elOption);
+                $b7e13237838ae60e$var$removeEl(elExisting, elOption, elMap, graphicModel);
+            }
+            var el = elMap.get(id);
+            if (el && textContentOption) {
+                if (isMerge) {
+                    var textContentExisting = el.getTextContent();
+                    textContentExisting ? textContentExisting.attr(textContentOption) : el.setTextContent(new $69f8539f606ac4d1$export$2e2bcd8739ae039(textContentOption));
+                } else if (isReplace) el.setTextContent(new $69f8539f606ac4d1$export$2e2bcd8739ae039(textContentOption));
+            }
+            if (el) {
+                var clipPathOption = elOption.clipPath;
+                if (clipPathOption) {
+                    var clipPathType = clipPathOption.type;
+                    var clipPath = void 0;
+                    var isInit = false;
+                    if (isMerge) {
+                        var oldClipPath = el.getClipPath();
+                        isInit = !oldClipPath || $b7e13237838ae60e$export$4ae363f1d88fb658(oldClipPath).type !== clipPathType;
+                        clipPath = isInit ? $b7e13237838ae60e$var$newEl(clipPathType) : oldClipPath;
+                    } else if (isReplace) {
+                        isInit = true;
+                        clipPath = $b7e13237838ae60e$var$newEl(clipPathType);
+                    }
+                    el.setClipPath(clipPath);
+                    (0, $1729ddaf47f245fa$export$4342b281b9b5d77e)(clipPath, clipPathOption, graphicModel, {
+                        isInit: isInit
+                    });
+                    (0, $52f878fa10fd9aeb$export$b0aa6a5f01693fa4)(clipPath, clipPathOption.keyframeAnimation, graphicModel);
+                }
+                var elInner = $b7e13237838ae60e$export$4ae363f1d88fb658(el);
+                el.setTextConfig(textConfig);
+                elInner.option = elOption;
+                $b7e13237838ae60e$var$setEventData(el, graphicModel, elOption);
+                $553cac3c23456879$export$fc6410d97fab306c({
+                    el: el,
+                    componentModel: graphicModel,
+                    itemName: el.name,
+                    itemTooltipOption: elOption.tooltip
+                });
+                (0, $52f878fa10fd9aeb$export$b0aa6a5f01693fa4)(el, elOption.keyframeAnimation, graphicModel);
+            }
+        });
+    };
+    /**
+   * Locate graphic elements.
+   */ GraphicComponentView.prototype._relocate = function(graphicModel, api) {
+        var elOptions = graphicModel.option.elements;
+        var rootGroup = this.group;
+        var elMap = this._elMap;
+        var apiWidth = api.getWidth();
+        var apiHeight = api.getHeight();
+        var xy = [
+            "x",
+            "y"
+        ];
+        // Top-down to calculate percentage width/height of group
+        for(var i = 0; i < elOptions.length; i++){
+            var elOption = elOptions[i];
+            var id = $ae51978b3407899c$export$fb1a222ba5dd6e51(elOption.id, null);
+            var el = id != null ? elMap.get(id) : null;
+            if (!el || !el.isGroup) continue;
+            var parentEl = el.parent;
+            var isParentRoot = parentEl === rootGroup;
+            // Like 'position:absolut' in css, default 0.
+            var elInner = $b7e13237838ae60e$export$4ae363f1d88fb658(el);
+            var parentElInner = $b7e13237838ae60e$export$4ae363f1d88fb658(parentEl);
+            elInner.width = (0, $c49e578c6cecd95e$export$e8514cb5a5e2b40f)(elInner.option.width, isParentRoot ? apiWidth : parentElInner.width) || 0;
+            elInner.height = (0, $c49e578c6cecd95e$export$e8514cb5a5e2b40f)(elInner.option.height, isParentRoot ? apiHeight : parentElInner.height) || 0;
+        }
+        // Bottom-up tranvese all elements (consider ec resize) to locate elements.
+        for(var i = elOptions.length - 1; i >= 0; i--){
+            var elOption = elOptions[i];
+            var id = $ae51978b3407899c$export$fb1a222ba5dd6e51(elOption.id, null);
+            var el = id != null ? elMap.get(id) : null;
+            if (!el) continue;
+            var parentEl = el.parent;
+            var parentElInner = $b7e13237838ae60e$export$4ae363f1d88fb658(parentEl);
+            var containerInfo = parentEl === rootGroup ? {
+                width: apiWidth,
+                height: apiHeight
+            } : {
+                width: parentElInner.width,
+                height: parentElInner.height
+            };
+            // PENDING
+            // Currently, when `bounding: 'all'`, the union bounding rect of the group
+            // does not include the rect of [0, 0, group.width, group.height], which
+            // is probably weird for users. Should we make a break change for it?
+            var layoutPos = {};
+            var layouted = $d6b95337e2cb7845$export$74054bd96b5eeef1(el, elOption, containerInfo, null, {
+                hv: elOption.hv,
+                boundingMode: elOption.bounding
+            }, layoutPos);
+            if (!$b7e13237838ae60e$export$4ae363f1d88fb658(el).isNew && layouted) {
+                var transition = elOption.transition;
+                var animatePos = {};
+                for(var k = 0; k < xy.length; k++){
+                    var key = xy[k];
+                    var val = layoutPos[key];
+                    if (transition && ((0, $1729ddaf47f245fa$export$6f3361b4b8d7a8ba)(transition) || $6769291029d9c7f0$export$305f7d4e9d4624f2(transition, key) >= 0)) animatePos[key] = val;
+                    else el[key] = val;
+                }
+                (0, $993ef3c43951e35d$export$c8dce3c08436e91e)(el, animatePos, graphicModel, 0);
+            } else el.attr(layoutPos);
+        }
+    };
+    /**
+   * Clear all elements.
+   */ GraphicComponentView.prototype._clear = function() {
+        var _this = this;
+        var elMap = this._elMap;
+        elMap.each(function(el) {
+            $b7e13237838ae60e$var$removeEl(el, $b7e13237838ae60e$export$4ae363f1d88fb658(el).option, elMap, _this._lastGraphicModel);
+        });
+        this._elMap = $6769291029d9c7f0$export$55f8aa7ef875b0a4();
+    };
+    GraphicComponentView.prototype.dispose = function() {
+        this._clear();
+    };
+    GraphicComponentView.type = "graphic";
+    return GraphicComponentView;
+}((0, $8b2bbd26f550166d$export$2e2bcd8739ae039));
+function $b7e13237838ae60e$var$newEl(graphicType) {
+    $6769291029d9c7f0$export$a7a9523472993e97(graphicType, "graphic type MUST be set");
+    var Clz = $6769291029d9c7f0$export$b5a638e9b3fff9f3($b7e13237838ae60e$var$nonShapeGraphicElements, graphicType) ? $b7e13237838ae60e$var$nonShapeGraphicElements[graphicType] : $553cac3c23456879$export$51df4b5565a58189(graphicType);
+    $6769291029d9c7f0$export$a7a9523472993e97(Clz, "graphic type " + graphicType + " can not be found");
+    var el = new Clz({});
+    $b7e13237838ae60e$export$4ae363f1d88fb658(el).type = graphicType;
+    return el;
+}
+function $b7e13237838ae60e$var$createEl(id, targetElParent, graphicType, elMap) {
+    var el = $b7e13237838ae60e$var$newEl(graphicType);
+    targetElParent.add(el);
+    elMap.set(id, el);
+    $b7e13237838ae60e$export$4ae363f1d88fb658(el).id = id;
+    $b7e13237838ae60e$export$4ae363f1d88fb658(el).isNew = true;
+    return el;
+}
+function $b7e13237838ae60e$var$removeEl(elExisting, elOption, elMap, graphicModel) {
+    var existElParent = elExisting && elExisting.parent;
+    if (existElParent) {
+        elExisting.type === "group" && elExisting.traverse(function(el) {
+            $b7e13237838ae60e$var$removeEl(el, elOption, elMap, graphicModel);
+        });
+        (0, $1729ddaf47f245fa$export$15575b6d82d35bb3)(elExisting, elOption, graphicModel);
+        elMap.removeKey($b7e13237838ae60e$export$4ae363f1d88fb658(elExisting).id);
+    }
+}
+function $b7e13237838ae60e$var$updateCommonAttrs(el, elOption, defaultZ, defaultZlevel) {
+    if (!el.isGroup) $6769291029d9c7f0$export$79b2f7037acddd43([
+        [
+            "cursor",
+            (0, $ed4b0bc09419a114$export$2e2bcd8739ae039).prototype.cursor
+        ],
+        // We should not support configure z and zlevel in the element level.
+        // But seems we didn't limit it previously. So here still use it to avoid breaking.
+        [
+            "zlevel",
+            defaultZlevel || 0
+        ],
+        [
+            "z",
+            defaultZ || 0
+        ],
+        // z2 must not be null/undefined, otherwise sort error may occur.
+        [
+            "z2",
+            0
+        ]
+    ], function(item) {
+        var prop = item[0];
+        if ($6769291029d9c7f0$export$b5a638e9b3fff9f3(elOption, prop)) el[prop] = $6769291029d9c7f0$export$995e01f2f5c9d030(elOption[prop], item[1]);
+        else if (el[prop] == null) el[prop] = item[1];
+    });
+    $6769291029d9c7f0$export$79b2f7037acddd43($6769291029d9c7f0$export$ed97f33186d4b816(elOption), function(key) {
+        // Assign event handlers.
+        // PENDING: should enumerate all event names or use pattern matching?
+        if (key.indexOf("on") === 0) {
+            var val = elOption[key];
+            el[key] = $6769291029d9c7f0$export$f6e2535fb5126e54(val) ? val : null;
+        }
+    });
+    if ($6769291029d9c7f0$export$b5a638e9b3fff9f3(elOption, "draggable")) el.draggable = elOption.draggable;
+    // Other attributes
+    elOption.name != null && (el.name = elOption.name);
+    elOption.id != null && (el.id = elOption.id);
+}
+// Remove unnecessary props to avoid potential problems.
+function $b7e13237838ae60e$var$getCleanedElOption(elOption) {
+    elOption = $6769291029d9c7f0$export$8b58be045bf06082({}, elOption);
+    $6769291029d9c7f0$export$79b2f7037acddd43([
+        "id",
+        "parentId",
+        "$action",
+        "hv",
+        "bounding",
+        "textContent",
+        "clipPath"
+    ].concat($d6b95337e2cb7845$export$a9aa2cc018afbed), function(name) {
+        delete elOption[name];
+    });
+    return elOption;
+}
+function $b7e13237838ae60e$var$setEventData(el, graphicModel, elOption) {
+    var eventData = (0, $b1b5db6463c0742a$export$b1c39b2bacd1ddc2)(el).eventData;
+    // Simple optimize for large amount of elements that no need event.
+    if (!el.silent && !el.ignore && !eventData) eventData = (0, $b1b5db6463c0742a$export$b1c39b2bacd1ddc2)(el).eventData = {
+        componentType: "graphic",
+        componentIndex: graphicModel.componentIndex,
+        name: el.name
+    };
+    // `elOption.info` enables user to mount some info on
+    // elements and use them in event handlers.
+    if (eventData) eventData.info = elOption.info;
+}
+
+
+function $32342411f226f6fc$export$4b3e715f166fdd78(registers) {
+    registers.registerComponentModel((0, $97e652c68c72ebdd$export$6d85925da4d2cf23));
+    registers.registerComponentView((0, $b7e13237838ae60e$export$1132c9ab9ad80748));
+    registers.registerPreprocessor(function(option) {
+        var graphicOption = option.graphic;
+        // Convert
+        // {graphic: [{left: 10, type: 'circle'}, ...]}
+        // or
+        // {graphic: {left: 10, type: 'circle'}}
+        // to
+        // {graphic: [{elements: [{left: 10, type: 'circle'}, ...]}]}
+        if ((0, $6769291029d9c7f0$export$43bee75e5e14138e)(graphicOption)) {
+            if (!graphicOption[0] || !graphicOption[0].elements) option.graphic = [
+                {
+                    elements: graphicOption
+                }
+            ];
+            else // Only one graphic instance can be instantiated. (We don't
+            // want that too many views are created in echarts._viewMap.)
+            option.graphic = [
+                option.graphic[0]
+            ];
+        } else if (graphicOption && !graphicOption.elements) option.graphic = [
+            {
+                elements: [
+                    graphicOption
+                ]
+            }
+        ];
+    });
+}
+
+/*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ /**
+ * AUTO-GENERATED FILE. DO NOT MODIFY.
+ */ /*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ 
+/*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
+*/ /**
+ * AUTO-GENERATED FILE. DO NOT MODIFY.
+ */ /*
+* Licensed to the Apache Software Foundation (ASF) under one
+* or more contributor license agreements.  See the NOTICE file
+* distributed with this work for additional information
+* regarding copyright ownership.  The ASF licenses this file
+* to you under the Apache License, Version 2.0 (the
+* "License"); you may not use this file except in compliance
+* with the License.  You may obtain a copy of the License at
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing,
+* software distributed under the License is distributed on an
+* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied.  See the License for the
+* specific language governing permissions and limitations
+* under the License.
 */ /*
 * Licensed to the Apache Software Foundation (ASF) under one
 * or more contributor license agreements.  See the NOTICE file
@@ -58726,6 +60094,7 @@ $6c5e1f02b5ec6904$export$1f96ae73734a86cc([
     (0, $20570e69a8f57833$export$4b3e715f166fdd78),
     (0, $13b5af1714af4fb9$export$4b3e715f166fdd78),
     (0, $67c4fc4f41a3277d$export$4b3e715f166fdd78),
+    (0, $32342411f226f6fc$export$4b3e715f166fdd78),
     (0, $a31ac28a19592fc2$export$4b3e715f166fdd78),
     (0, $f8948a289fd1dadd$export$4b3e715f166fdd78),
     (0, $7ce331b4a9eb09e9$export$4b3e715f166fdd78),
@@ -58818,7 +60187,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         const size = this._card.clientWidth * this._card.clientWidth;
         console.log("size: " + size);
         //this._config.title = "size: " + size;
-        let smallDevice = this._card.clientWidth * this._card.clientWidth < 300000;
+        const smallDevice = this._card.clientWidth * this._card.clientWidth < 300000;
         let options = {
             grid: {
                 left: "2%",
@@ -58903,7 +60272,19 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                         color: "rgba(0, 100, 0, 50)"
                     }
                 }
-            ]
+            ],
+            graphic: {
+                id: "info",
+                type: "text",
+                z: 0,
+                left: 100,
+                top: 100,
+                draggable: true,
+                style: {
+                    fill: "#AAA",
+                    width: 220
+                }
+            }
         };
         if (this._config.title) //console.log("show title");
         options = {
@@ -58937,7 +60318,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     resize() {
         if (this._chart == null) // Create chart when the card size is known
         this.createChart();
-        console.log(`resize(${this._card.clientWidth}, ${this._card.clientHeight})`);
+        // console.log(`resize(${this._card.clientWidth}, ${this._card.clientHeight})`)
         this._chart.resize();
     }
     getCardSize() {
@@ -58973,10 +60354,13 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         let thisCard = this;
         let legends = [];
         this._series = [];
+        let points = 0;
+        let info = `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\nPoints:\n`;
         for(let entityId in result){
             let entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
             const arr = result[entityId];
+            points += arr.length;
             //console.log(a);
             let data = [];
             for(let i = 1; i < arr.length; i++){
@@ -58986,6 +60370,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                     arr[i].s
                 ]);
             }
+            info += `   ${entityId}: ${arr.length}\n`;
             const line = {
                 name: entity.name || entity.entity,
                 type: "line",
@@ -59006,8 +60391,15 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             //console.log(line);
             this._series.push(line);
         }
+        info += `   sum: ${points}`;
         let config = this._config;
         this._chart.setOption({
+            graphic: {
+                id: "info",
+                style: {
+                    text: info
+                }
+            },
             legend: {
                 data: legends,
                 formatter: function(name) {

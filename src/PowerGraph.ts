@@ -21,6 +21,7 @@ import {
     TitleComponent,
     ToolboxComponent,
     TooltipComponent,
+    GraphicComponent,
     GridComponent,
     DatasetComponent,
     LegendComponent,
@@ -44,6 +45,7 @@ echarts.use([
     TitleComponent,
     ToolboxComponent,
     TooltipComponent,
+    GraphicComponent,
     GridComponent,
     DatasetComponent,
     DataZoomComponent,
@@ -158,7 +160,7 @@ class PowerGraph extends HTMLElement {
         console.log("size: " + size);
 
         //this._config.title = "size: " + size;
-        let smallDevice: boolean = this._card.clientWidth * this._card.clientWidth < 300000
+        const smallDevice: boolean = this._card.clientWidth * this._card.clientWidth < 300000
 
         let options = {
             grid: {
@@ -245,7 +247,19 @@ class PowerGraph extends HTMLElement {
                         color: 'rgba(0, 100, 0, 50)'
                     }
                 }
-            ]
+            ],
+            graphic: {
+                id: 'info',
+                type: 'text',
+                z: 0,
+                left: 100,
+                top: 100,
+                draggable: true,
+                style: {
+                    fill: '#AAA',
+                    width: 220
+                }
+            }
         };
         if (this._config.title) {
             //console.log("show title");
@@ -293,7 +307,7 @@ class PowerGraph extends HTMLElement {
             // Create chart when the card size is known
             this.createChart();
         }
-        console.log(`resize(${this._card.clientWidth}, ${this._card.clientHeight})`)
+        // console.log(`resize(${this._card.clientWidth}, ${this._card.clientHeight})`)
         this._chart.resize();
     }
 
@@ -340,11 +354,14 @@ class PowerGraph extends HTMLElement {
 
         let legends: string[] = [];
         this._series = [];
+        let points = 0;
+        let info = `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\nPoints:\n`;
 
         for (let entityId in result) {
             let entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
             const arr: DataItem[] = result[entityId];
+            points += arr.length;
             //console.log(a);
 
             let data: number[][] = [];
@@ -352,6 +369,7 @@ class PowerGraph extends HTMLElement {
                 const time: number = Math.round(arr[i].lu * 1000);
                 data.push([time, arr[i].s]);
             }
+            info += `   ${entityId}: ${arr.length}\n`;
 
             const line = {
                 name: entity.name || entity.entity,
@@ -375,9 +393,16 @@ class PowerGraph extends HTMLElement {
             //console.log(line);
             this._series.push(line)
         }
+        info += `   sum: ${points}`;
 
         let config: GraphConfig = this._config;
         this._chart.setOption({
+            graphic: {
+                id: 'info',
+                style: {
+                    text: info
+                }
+            },
             legend: {
                 data: legends,
                 formatter: function (name) {
