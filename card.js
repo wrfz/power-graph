@@ -617,6 +617,9 @@ const $58ff2ed505ab3e4f$export$f5c524615a7708d6 = {
 
 class $cc9bf597b1ebde57$export$566c11bd98e80427 {
     constructor(obj){
+        this.animation = true;
+        this.renderer = "canvas";
+        this.sampling = false;
         obj && Object.assign(this, obj);
     }
     validate() {
@@ -627,7 +630,7 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
             this.start = new Date(new Date());
             this.start.setHours(this.start.getHours() - 2);
         }
-        console.log("start: " + this.start.toString());
+        //console.log("start: " + this.start.toString());
         if (!this.entities) throw new Error("Please define an entity!");
     }
     getEntityById(entityId) {
@@ -642,6 +645,37 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
         }
         throw Error("Entity name not found: " + name);
     }
+}
+
+
+function $4bc1678c98a41ad1$export$7e4aa119212bc614(value) {
+    return value != null && value !== "" && !isNaN(Number(value.toString()));
+}
+function $4bc1678c98a41ad1$export$a0a81dc3380ce7d3(value, defaultValue) {
+    return value != null && $4bc1678c98a41ad1$export$7e4aa119212bc614(value) ? +value : defaultValue;
+}
+function $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71(date, hours) {
+    const hoursToAdd = hours * 3600000;
+    date.setTime(date.getTime() - hoursToAdd);
+    return date;
+}
+function $4bc1678c98a41ad1$export$a6cdc56e425d0d0a(item) {
+    return item && typeof item === "object" && !Array.isArray(item);
+}
+function $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources) {
+    if (!sources.length) return target;
+    const source = sources.shift();
+    if ($4bc1678c98a41ad1$export$a6cdc56e425d0d0a(target) && $4bc1678c98a41ad1$export$a6cdc56e425d0d0a(source)) {
+        for(const key in source)if ($4bc1678c98a41ad1$export$a6cdc56e425d0d0a(source[key])) {
+            if (!target[key]) Object.assign(target, {
+                [key]: {}
+            });
+            $4bc1678c98a41ad1$export$dd702b3c8240390c(target[key], source[key]);
+        } else Object.assign(target, {
+            [key]: source[key]
+        });
+    }
+    return $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources);
 }
 
 
@@ -60088,7 +60122,6 @@ var $e9848ff2edce194c$export$9caf76241ca21a11 = function() {
 
 
 
-"use strict";
 // Register the required components
 $6c5e1f02b5ec6904$export$1f96ae73734a86cc([
     (0, $818f71e458e33488$export$4b3e715f166fdd78),
@@ -60106,17 +60139,6 @@ $6c5e1f02b5ec6904$export$1f96ae73734a86cc([
     (0, $fcac9476ccd13092$export$efd07f28fd73e88c),
     (0, $7dba11b14a95583c$export$4b3e715f166fdd78)
 ]);
-function $1de2f2772a630298$var$isNumber(value) {
-    return value != null && value !== "" && !isNaN(Number(value.toString()));
-}
-function $1de2f2772a630298$var$toNumber(value, defaultValue) {
-    return value != null && $1de2f2772a630298$var$isNumber(value) ? +value : defaultValue;
-}
-function $1de2f2772a630298$var$subHours(date, hours) {
-    const hoursToAdd = hours * 3600000;
-    date.setTime(date.getTime() - hoursToAdd);
-    return date;
-}
 class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     static{
         this.TimeRange = class {
@@ -60135,7 +60157,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     constructor(){
         super();
         this.createContent();
-        this._range = new $1de2f2772a630298$var$PowerGraph.TimeRange($1de2f2772a630298$var$subHours(new Date(), 2400), new Date());
+        this._range = new $1de2f2772a630298$var$PowerGraph.TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(new Date(), 2400), new Date());
         this._resizeObserver = new (0, $e9848ff2edce194c$export$9caf76241ca21a11)((entries)=>{
             this.resize();
         });
@@ -60168,9 +60190,9 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this.shadowRoot.append(_style, this._card);
     }
     createChart() {
-        //console.log("createChart");
+        //console.log("createChart: " + this._config.renderer);
         this._chart = $52bde46803a5e949$export$2cd8252107eb640b(this._card, null, {
-            renderer: "svg"
+            renderer: this._config.renderer
         });
         let chart = this._chart;
         this._chart.on("datazoom", function(evt) {
@@ -60181,55 +60203,19 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             localStorage.setItem("dataZoom.endTime", endTime);
         //console.log(startTime, endTime);
         });
-        const startTime = $1de2f2772a630298$var$toNumber(localStorage.getItem("dataZoom.startTime"), 75);
-        const endTime = $1de2f2772a630298$var$toNumber(localStorage.getItem("dataZoom.endTime"), 100);
+        const startTime = (0, $4bc1678c98a41ad1$export$a0a81dc3380ce7d3)(localStorage.getItem("dataZoom.startTime"), 75);
+        const endTime = (0, $4bc1678c98a41ad1$export$a0a81dc3380ce7d3)(localStorage.getItem("dataZoom.endTime"), 100);
         //console.log(startTime, endTime);
         const size = this._card.clientWidth * this._card.clientWidth;
         //console.log("size: " + size);
         const smallDevice = this._card.clientWidth * this._card.clientWidth < 300000;
         let options = {
+            animation: this._config.animation,
             grid: {
                 left: "2%",
                 top: "3%",
                 right: "2%",
                 bottom: "30%"
-            },
-            tooltip: {
-                trigger: "axis",
-                triggerOn: smallDevice ? "click" : "mousemove|click",
-                axisPointer: {
-                    type: "cross"
-                },
-                formatter: (params)=>{
-                    var xTime = new Date(params[0].axisValue);
-                    let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
-                    let chart = this._chart;
-                    const tooltipReducer = (prev, curr)=>{
-                        return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
-                    };
-                    this._series.forEach((serie, index)=>{
-                        const color = (0, $a6bf18d38e895e58$export$8d80f9cac07cdb3)(chart.getVisual({
-                            seriesIndex: index
-                        }, "color"));
-                        const style = (0, $a6bf18d38e895e58$export$dbf350e5966cf602)`
-                            display: inline-block;
-                            margin-right: 5px;
-                            border-radius: 10px;
-                            width: 9px;
-                            height: 9px;
-                            background-color: ${color};
-                        `;
-                        // TODO: Use binary search to find the closest value
-                        const value = serie.data.reduce(tooltipReducer)[1];
-                        tooltip += `<tr><td><span style="${style}"></span></td>`;
-                        tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
-                    });
-                    tooltip += `</table>`;
-                    return tooltip;
-                },
-                textStyle: {
-                    fontSize: 12
-                }
             },
             xAxis: {
                 type: "time",
@@ -60271,7 +60257,48 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                         color: "rgba(0, 100, 0, 50)"
                     }
                 }
-            ],
+            ]
+        };
+        if (this._config.showTooltip) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
+            tooltip: {
+                trigger: "axis",
+                triggerOn: smallDevice ? "click" : "mousemove|click",
+                axisPointer: {
+                    type: "cross"
+                },
+                formatter: (params)=>{
+                    var xTime = new Date(params[0].axisValue);
+                    let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
+                    let chart = this._chart;
+                    const tooltipReducer = (prev, curr)=>{
+                        return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
+                    };
+                    this._series.forEach((serie, index)=>{
+                        const color = (0, $a6bf18d38e895e58$export$8d80f9cac07cdb3)(chart.getVisual({
+                            seriesIndex: index
+                        }, "color"));
+                        const style = (0, $a6bf18d38e895e58$export$dbf350e5966cf602)`
+                                display: inline-block;
+                                margin-right: 5px;
+                                border-radius: 10px;
+                                width: 9px;
+                                height: 9px;
+                                background-color: ${color};
+                            `;
+                        // TODO: Use binary search to find the closest value
+                        const value = serie.data.reduce(tooltipReducer)[1];
+                        tooltip += `<tr><td><span style="${style}"></span></td>`;
+                        tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
+                    });
+                    tooltip += `</table>`;
+                    return tooltip;
+                },
+                textStyle: {
+                    fontSize: 12
+                }
+            }
+        });
+        if (this._config.showInfo) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
             graphic: {
                 id: "info",
                 type: "text",
@@ -60284,17 +60311,15 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                     width: 220
                 }
             }
-        };
-        if (this._config.title) //console.log("show title");
-        options = {
-            ...options,
+        });
+        if (this._config.title) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
             title: {
                 show: true,
                 text: this._config.title
             }
-        };
-        //console.log(options);
+        });
         this._chart.setOption(options);
+        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
         this.requestData();
     }
     requestData() {
@@ -60354,7 +60379,13 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         let legends = [];
         this._series = [];
         let points = 0;
-        let info = `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\nPoints:\n`;
+        let info = "";
+        if (this._config.showInfo) {
+            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\n`;
+            info += `Renderer: ${this._config.renderer}\n`;
+            info += `Sampling: ${this._config.sampling}\n`;
+            info += "Points:\n";
+        }
         for(let entityId in result){
             let entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
@@ -60368,7 +60399,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                     +arr[i].s
                 ]);
             }
-            console.log(data);
+            //console.log(data);
             points += data.length;
             info += `   ${entityId}: ${data.length}\n`;
             const line = {
@@ -60377,9 +60408,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 smooth: false,
                 symbol: "none",
                 silient: true,
-                //areaStyle: {},
-                data: data,
-                sampling: "lttb"
+                data: data
             };
             if (this._config.shadow || entity.shadow) Object.assign(line, {
                 lineStyle: {
@@ -60389,18 +60418,17 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                     shadowOffsetY: 8
                 }
             });
+            if (this._config.sampling) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
+                sampling: "lttb"
+            });
+            if (this._config.fillAread) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
+                areaStyle: {}
+            });
             //console.log(line);
             this._series.push(line);
         }
-        info += `   sum: ${points}`;
         let config = this._config;
-        this._chart.setOption({
-            graphic: {
-                id: "info",
-                style: {
-                    text: info
-                }
-            },
+        let options = {
             legend: {
                 data: legends,
                 formatter: function(name) {
@@ -60415,8 +60443,21 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 boundaryGap: false
             },
             series: this._series
-        });
-        if ($1de2f2772a630298$var$isNumber(this._config.autorefresh) && this._tid == 0) //console.log("setInterval");
+        };
+        if (this._config.showInfo) {
+            info += `   sum: ${points}`;
+            (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
+                graphic: {
+                    id: "info",
+                    style: {
+                        text: info
+                    }
+                }
+            });
+        }
+        this._chart.setOption(options);
+        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+        if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == 0) //console.log("setInterval");
         this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
     }
     loaderFailed(error) {
@@ -60425,7 +60466,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     }
     clearRefreshInterval() {
         if (this._tid != 0) {
-            console.log("clearInterval");
+            //console.log("clearInterval");
             clearTimeout(this._tid);
             this._tid = 0;
         }

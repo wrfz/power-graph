@@ -1,5 +1,3 @@
-"use strict";
-
 import {
     css,
     CSSResult,
@@ -12,6 +10,7 @@ import {
 } from "lit";
 
 import { GraphConfig, EntityConfig } from './GraphConfig';
+import { mergeDeep, isNumber, toNumber, subHours } from './utils';
 import { simplify } from './simplify';
 
 import * as echarts from 'echarts/core';
@@ -28,11 +27,12 @@ import {
     DatasetComponent,
     LegendComponent,
     TransformComponent,
-    DataZoomComponent
+    DataZoomComponent,
 } from 'echarts/components';
 
 // Features like Universal Transition and Label Layout
 import { LabelLayout, UniversalTransition } from 'echarts/features';
+
 
 // Import the Canvas renderer
 // Note that including the CanvasRenderer or SVGRenderer is a required step
@@ -63,19 +63,6 @@ declare global {
     interface Window {
         customCards?: any;
     }
-}
-function isNumber(value?: string | number): boolean {
-    return (value != null && value !== '' && !isNaN(Number(value.toString())));
-}
-
-function toNumber(value: string | null, defaultValue: number): number {
-    return value != null && isNumber(value) ? +value : defaultValue;
-}
-
-function subHours(date: Date, hours: number) {
-    const hoursToAdd = hours * 60 * 60 * 1000;
-    date.setTime(date.getTime() - hoursToAdd);
-    return date;
 }
 
 class PowerGraph extends HTMLElement {
@@ -139,9 +126,9 @@ class PowerGraph extends HTMLElement {
     }
 
     private createChart(): void {
-        //console.log("createChart");
+        //console.log("createChart: " + this._config.renderer);
 
-        this._chart = echarts.init(this._card, null, { renderer: 'svg' });
+        this._chart = echarts.init(this._card, null, { renderer: this._config.renderer });
         let chart: echarts.ECharts = this._chart;
         this._chart.on('datazoom', function (evt) {
             const option = chart.getOption();
@@ -163,49 +150,12 @@ class PowerGraph extends HTMLElement {
         const smallDevice: boolean = this._card.clientWidth * this._card.clientWidth < 300000
 
         let options = {
+            animation: this._config.animation,
             grid: {
                 left: '2%',
                 top: '3%',
                 right: '2%',
                 bottom: '30%'
-            },
-            tooltip: {
-                trigger: 'axis',
-                triggerOn: smallDevice ? 'click' : 'mousemove|click',
-                axisPointer: {
-                    type: 'cross'
-                },
-                formatter: (params) => {
-                    var xTime = new Date(params[0].axisValue)
-                    let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
-
-                    let chart = this._chart;
-                    const tooltipReducer = (prev, curr) => {
-                        return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
-                    }
-
-                    this._series.forEach((serie, index) => {
-                        const color: CSSResult = unsafeCSS(chart.getVisual({ seriesIndex: index }, 'color'));
-                        const style: CSSResult = css`
-                            display: inline-block;
-                            margin-right: 5px;
-                            border-radius: 10px;
-                            width: 9px;
-                            height: 9px;
-                            background-color: ${color};
-                        `;
-
-                        // TODO: Use binary search to find the closest value
-                        const value: number = serie.data.reduce(tooltipReducer)[1]
-                        tooltip += `<tr><td><span style="${style}"></span></td>`
-                        tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
-                    });
-                    tooltip += `</table>`;
-                    return tooltip;
-                },
-                textStyle: {
-                    fontSize: 12
-                }
             },
             xAxis: {
                 type: 'time',
@@ -247,33 +197,78 @@ class PowerGraph extends HTMLElement {
                         color: 'rgba(0, 100, 0, 50)'
                     }
                 }
-            ],
-            graphic: {
-                id: 'info',
-                type: 'text',
-                z: 0,
-                left: 100,
-                top: 100,
-                draggable: true,
-                style: {
-                    fill: '#AAA',
-                    width: 220
-                }
-            }
+            ]
         };
-        if (this._config.title) {
-            //console.log("show title");
-            options = {
-                ...options, ...{
-                    title: {
-                        show: true,
-                        text: this._config.title
+        if (this._config.showTooltip) {
+            mergeDeep(options, {
+                tooltip: {
+                    trigger: 'axis',
+                    triggerOn: smallDevice ? 'click' : 'mousemove|click',
+                    axisPointer: {
+                        type: 'cross'
+                    },
+                    formatter: (params) => {
+                        var xTime = new Date(params[0].axisValue)
+                        let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
+
+                        let chart = this._chart;
+                        const tooltipReducer = (prev, curr) => {
+                            return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
+                        }
+
+                        this._series.forEach((serie, index) => {
+                            const color: CSSResult = unsafeCSS(chart.getVisual({ seriesIndex: index }, 'color'));
+                            const style: CSSResult = css`
+                                display: inline-block;
+                                margin-right: 5px;
+                                border-radius: 10px;
+                                width: 9px;
+                                height: 9px;
+                                background-color: ${color};
+                            `;
+
+                            // TODO: Use binary search to find the closest value
+                            const value: number = serie.data.reduce(tooltipReducer)[1]
+                            tooltip += `<tr><td><span style="${style}"></span></td>`
+                            tooltip += `<td>${serie.name}</td><td><b>${value}</b></td></tr>`;
+                        });
+                        tooltip += `</table>`;
+                        return tooltip;
+                    },
+                    textStyle: {
+                        fontSize: 12
                     }
                 }
-            };
+            });
         }
-        //console.log(options);
+        if (this._config.showInfo) {
+            mergeDeep(options, {
+                graphic: {
+                    id: 'info',
+                    type: 'text',
+                    z: 0,
+                    left: 100,
+                    top: 100,
+                    draggable: true,
+                    style: {
+                        fill: '#AAA',
+                        width: 220
+                    }
+                }
+            });
+        }
+        if (this._config.title) {
+            mergeDeep(options, {
+                title: {
+                    show: true,
+                    text: this._config.title
+                }
+            });
+        }
         this._chart.setOption(options);
+        if (this._config.logOptions) {
+            console.log("setOptions: " + JSON.stringify(options));
+        }
 
         this.requestData();
     }
@@ -355,7 +350,13 @@ class PowerGraph extends HTMLElement {
         let legends: string[] = [];
         this._series = [];
         let points = 0;
-        let info = `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\nPoints:\n`;
+        let info = "";
+        if (this._config.showInfo) {
+            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\n`;
+            info += `Renderer: ${this._config.renderer}\n`;
+            info += `Sampling: ${this._config.sampling}\n`;
+            info += 'Points:\n';
+        }
 
         for (let entityId in result) {
             let entity: EntityConfig = this._config.getEntityById(entityId);
@@ -368,7 +369,7 @@ class PowerGraph extends HTMLElement {
                 const time: number = Math.round(arr[i].lu * 1000);
                 data.push([time, +arr[i].s]);
             }
-            console.log(data);
+            //console.log(data);
             points += data.length;
             info += `   ${entityId}: ${data.length}\n`;
 
@@ -378,9 +379,7 @@ class PowerGraph extends HTMLElement {
                 smooth: false,
                 symbol: 'none',
                 silient: true,
-                //areaStyle: {},
-                data: data,
-                sampling: 'lttb'
+                data: data
             };
             if (this._config.shadow || entity.shadow) {
                 Object.assign(line, {
@@ -392,19 +391,18 @@ class PowerGraph extends HTMLElement {
                     }
                 });
             }
+            if (this._config.sampling) {
+                mergeDeep(line, { sampling: 'lttb' });
+            }
+            if (this._config.fillAread) {
+                mergeDeep(line, { areaStyle: {} });
+            }
             //console.log(line);
             this._series.push(line)
         }
-        info += `   sum: ${points}`;
 
         let config: GraphConfig = this._config;
-        this._chart.setOption({
-            graphic: {
-                id: 'info',
-                style: {
-                    text: info
-                }
-            },
+        let options = {
             legend: {
                 data: legends,
                 formatter: function (name) {
@@ -419,7 +417,24 @@ class PowerGraph extends HTMLElement {
                 boundaryGap: false
             },
             series: this._series
-        });
+        };
+
+        if (this._config.showInfo) {
+            info += `   sum: ${points}`;
+            mergeDeep(options, {
+                graphic: {
+                    id: 'info',
+                    style: {
+                        text: info
+                    }
+                }
+            });
+        }
+
+        this._chart.setOption(options);
+        if (this._config.logOptions) {
+            console.log("setOptions: " + JSON.stringify(options));
+        }
 
         if (isNumber(this._config.autorefresh) && this._tid == 0) {
             //console.log("setInterval");
@@ -434,7 +449,7 @@ class PowerGraph extends HTMLElement {
 
     private clearRefreshInterval(): void {
         if (this._tid != 0) {
-            console.log("clearInterval");
+            //console.log("clearInterval");
             clearTimeout(this._tid);
             this._tid = 0;
         }

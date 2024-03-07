@@ -1,3 +1,5 @@
+import { CanvasRenderer } from 'echarts/renderers';
+
 export interface EntityConfig {
     entity: string;
     name: string;
@@ -10,8 +12,18 @@ export class GraphConfig {
     shadow: boolean;
     entities: EntityConfig[];
     start: Date;
+    animation: boolean;
+    showTooltip: boolean;
+    sampling: boolean;
+    fillAread: boolean;
+    renderer: 'canvas' | 'svg';
+    showInfo: boolean;
+    logOptions: boolean;
 
     constructor(obj) {
+        this.animation = true;
+        this.renderer = 'canvas';
+        this.sampling = false;
         obj && Object.assign(this, obj);
     }
 
@@ -25,7 +37,7 @@ export class GraphConfig {
             this.start = new Date(new Date());
             this.start.setHours(this.start.getHours() - 2);
         }
-        console.log("start: " + this.start.toString());
+        //console.log("start: " + this.start.toString());
         if (!this.entities) {
             throw new Error('Please define an entity!');
         }
