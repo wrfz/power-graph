@@ -369,9 +369,8 @@ class PowerGraph extends HTMLElement {
                 data.push([time, +arr[i].s]);
             }
             console.log(data);
-            const simpleData: number[][] = simplify(data, 0.1, false)
-            points += simpleData.length;
-            info += `   ${entityId}: ${simpleData.length}\n`;
+            points += data.length;
+            info += `   ${entityId}: ${data.length}\n`;
 
             const line = {
                 name: entity.name || entity.entity,
@@ -380,7 +379,8 @@ class PowerGraph extends HTMLElement {
                 symbol: 'none',
                 silient: true,
                 //areaStyle: {},
-                data: simpleData
+                data: data,
+                sampling: 'lttb'
             };
             if (this._config.shadow || entity.shadow) {
                 Object.assign(line, {
