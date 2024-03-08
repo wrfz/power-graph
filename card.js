@@ -620,6 +620,7 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
         this.animation = true;
         this.renderer = "canvas";
         this.sampling = false;
+        this.timRangeInHours = 2;
         obj && Object.assign(this, obj);
     }
     validate() {
@@ -656,8 +657,9 @@ function $4bc1678c98a41ad1$export$a0a81dc3380ce7d3(value, defaultValue) {
 }
 function $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71(date, hours) {
     const hoursToAdd = hours * 3600000;
-    date.setTime(date.getTime() - hoursToAdd);
-    return date;
+    let newDate = new Date(date.getTime());
+    newDate.setTime(newDate.getTime() - hoursToAdd);
+    return newDate;
 }
 function $4bc1678c98a41ad1$export$a6cdc56e425d0d0a(item) {
     return item && typeof item === "object" && !Array.isArray(item);
@@ -676,6 +678,84 @@ function $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources) {
         });
     }
     return $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources);
+}
+
+
+function $0de2eca6fadd5daa$var$getSqDist(p1, p2) {
+    const dx = p1[0] - p2[0];
+    const dy = p1[1] - p2[1];
+    return dx * dx + dy * dy;
+}
+// square distance from a point to a segment
+function $0de2eca6fadd5daa$var$getSqSegDist(p, p1, p2) {
+    let x = p1[0];
+    let y = p1[1];
+    let dx = p2[0] - x;
+    let dy = p2[1] - y;
+    if (dx !== 0 || dy !== 0) {
+        var t = ((p[0] - x) * dx + (p[1] - y) * dy) / (dx * dx + dy * dy);
+        if (t > 1) {
+            x = p2[0];
+            y = p2[1];
+        } else if (t > 0) {
+            x += dx * t;
+            y += dy * t;
+        }
+    }
+    dx = p[0] - x;
+    dy = p[1] - y;
+    return dx * dx + dy * dy;
+}
+// rest of the code doesn't care about point format
+// basic distance-based simplification
+function $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance) {
+    let prevPoint = points[0];
+    const newPoints = [
+        prevPoint
+    ];
+    let point = null;
+    for(let i = 1, len = points.length; i < len; i++){
+        point = points[i];
+        if ($0de2eca6fadd5daa$var$getSqDist(point, prevPoint) > sqTolerance) {
+            newPoints.push(point);
+            prevPoint = point;
+        }
+    }
+    if (point != null && prevPoint !== point) newPoints.push(point);
+    return newPoints;
+}
+function $0de2eca6fadd5daa$var$simplifyDPStep(points, first, last, sqTolerance, simplified) {
+    let maxSqDist = sqTolerance;
+    let index = 0;
+    for(let i = first + 1; i < last; i++){
+        const sqDist = $0de2eca6fadd5daa$var$getSqSegDist(points[i], points[first], points[last]);
+        if (sqDist > maxSqDist) {
+            index = i;
+            maxSqDist = sqDist;
+        }
+    }
+    if (maxSqDist > sqTolerance) {
+        if (index - first > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, first, index, sqTolerance, simplified);
+        simplified.push(points[index]);
+        if (last - index > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, index, last, sqTolerance, simplified);
+    }
+}
+// simplification using Ramer-Douglas-Peucker algorithm
+function $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, sqTolerance) {
+    var last = points.length - 1;
+    var simplified = [
+        points[0]
+    ];
+    $0de2eca6fadd5daa$var$simplifyDPStep(points, 0, last, sqTolerance, simplified);
+    simplified.push(points[last]);
+    return simplified;
+}
+function $0de2eca6fadd5daa$export$798b53621063651(points, tolerance, highestQuality) {
+    if (points.length <= 2) return points;
+    const sqTolerance = tolerance !== undefined ? tolerance * tolerance : 1;
+    points = highestQuality ? points : $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance);
+    points = $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, sqTolerance);
+    return points;
 }
 
 
@@ -60139,25 +60219,26 @@ $6c5e1f02b5ec6904$export$1f96ae73734a86cc([
     (0, $fcac9476ccd13092$export$efd07f28fd73e88c),
     (0, $7dba11b14a95583c$export$4b3e715f166fdd78)
 ]);
-class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
-    static{
-        this.TimeRange = class {
-            constructor(start, end){
-                this._elements = {
-                    card: Element,
-                    style: Element
-                };
-                this._tid = 0;
-                this._series = [];
-                this.start = start;
-                this.end = end;
-            }
-        };
+class $1de2f2772a630298$var$TimeRange {
+    constructor(start, end){
+        this.start = start;
+        this.end = end;
     }
+}
+class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     constructor(){
         super();
+        this._elements = {
+            card: Element,
+            style: Element
+        };
+        this._tid = 0;
+        this._series = [];
+        this._data = [
+            []
+        ];
         this.createContent();
-        this._range = new $1de2f2772a630298$var$PowerGraph.TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(new Date(), 2400), new Date());
+        //this._range = new PowerGraph.TimeRange(subHours(new Date(), 1 * 24), new Date());
         this._resizeObserver = new (0, $e9848ff2edce194c$export$9caf76241ca21a11)((entries)=>{
             this.resize();
         });
@@ -60166,7 +60247,9 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //console.log("setConfig");
         this._config = new (0, $cc9bf597b1ebde57$export$566c11bd98e80427)(config);
         this._config.validate();
-        this._range = new $1de2f2772a630298$var$PowerGraph.TimeRange(this._config.start, new Date());
+        //this._range = new PowerGraph.TimeRange(this._config.start, new Date());
+        this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(new Date(), this._config.timRangeInHours), new Date());
+        console.log(this._range);
         this.clearRefreshInterval();
     }
     set hass(hass) {
@@ -60189,22 +60272,29 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         });
         this.shadowRoot.append(_style, this._card);
     }
+    onScroll(event) {
+        //console.log(event);
+        //const option = this._chart.getOption();
+        //const dataZoom: any[] = option.dataZoom as any[];
+        const { start: start, end: end } = event;
+        //localStorage.setItem("dataZoom.startTime", startTime);
+        //localStorage.setItem("dataZoom.endTime", endTime);
+        //console.log(dataZoom);
+        console.log(event);
+    }
     createChart() {
-        //console.log("createChart: " + this._config.renderer);
+        console.log("createChart: " + this._config.renderer);
+        let thisGraph = this;
         this._chart = $52bde46803a5e949$export$2cd8252107eb640b(this._card, null, {
             renderer: this._config.renderer
         });
-        let chart = this._chart;
+        console.log(this);
+        //let chart: echarts.ECharts = this._chart;
         this._chart.on("datazoom", function(evt) {
-            const option = chart.getOption();
-            const dataZoom = option.dataZoom;
-            const { startTime: startTime, endTime: endTime } = dataZoom[0];
-            localStorage.setItem("dataZoom.startTime", startTime);
-            localStorage.setItem("dataZoom.endTime", endTime);
-        //console.log(startTime, endTime);
+            thisGraph.onScroll(evt);
         });
-        const startTime = (0, $4bc1678c98a41ad1$export$a0a81dc3380ce7d3)(localStorage.getItem("dataZoom.startTime"), 75);
-        const endTime = (0, $4bc1678c98a41ad1$export$a0a81dc3380ce7d3)(localStorage.getItem("dataZoom.endTime"), 100);
+        //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
+        //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
         //console.log(startTime, endTime);
         const size = this._card.clientWidth * this._card.clientWidth;
         //console.log("size: " + size);
@@ -60323,11 +60413,29 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this.requestData();
     }
     requestData() {
-        //console.log("requestData: " + this._config.entities.length);
         const entities = [];
         for (const entity of this._config.entities)entities.push(entity.entity);
         //console.log(this._range);
-        this._range.end = new Date();
+        if (this._data[0].length > 0) {
+            let option = this._chart.getOption();
+            const dataZoom = option.dataZoom;
+            const startInPercent = dataZoom[0].start;
+            if (startInPercent == 0) {
+                console.log("request past data");
+                let endDate = new Date(this._data[0][0][0][0] - 1);
+                this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(endDate, 24), endDate);
+            } else {
+                console.log("request new data");
+                this._range.end = new Date();
+                let maxAvailableTime = 0;
+                for (let dataPoints of this._data[0]){
+                    let lastDataPoint = dataPoints[dataPoints.length - 1];
+                    maxAvailableTime = Math.max(maxAvailableTime, lastDataPoint[0]);
+                }
+                this._range = new $1de2f2772a630298$var$TimeRange(new Date(maxAvailableTime), new Date());
+            }
+        }
+        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
         const request = {
             type: "history/history_during_period",
             start_time: this._range.start.toISOString(),
@@ -60339,10 +60447,131 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //console.log(request);
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
+    dataResponse(result) {
+        //console.log("dataResponse >>")
+        //console.log(result)
+        let thisCard = this;
+        let legends = [];
+        this._series = [];
+        let points = 0;
+        let info = "";
+        if (this._config.showInfo) {
+            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
+            info += `Renderer: ${this._config.renderer} \n`;
+            info += `Sampling: ${this._config.sampling} \n`;
+            info += "Points:\n";
+        }
+        let serisIndex = 0;
+        for(let entityId in result){
+            let entity = this._config.getEntityById(entityId);
+            legends.push(entity.name || entity.entity);
+            const arr = result[entityId];
+            let data = [];
+            for(let i = 1; i < arr.length; i++){
+                const time = Math.round(arr[i].lu * 1000);
+                data.push([
+                    time,
+                    +arr[i].s
+                ]);
+            }
+            //console.log("a: " + this._data[0].length);
+            while(this._data[0].length <= serisIndex)this._data[0].push([]);
+            const isUnshift = data.length > 0 && this._data[0][serisIndex].length > 0 && data[0][0] < this._data[0][serisIndex][0][0];
+            //console.log("b: " + this._data[0].length);
+            console.log("add: " + data.length);
+            let currentSeries = this._data[0][serisIndex];
+            if (data.length > 0) {
+                if (isUnshift) {
+                    currentSeries.unshift(...data);
+                    console.log("unshift: " + data);
+                } else {
+                    currentSeries.push(...data);
+                    console.log("push: " + data);
+                }
+                console.log(this._data);
+            }
+            //console.log(data);
+            points += currentSeries.length;
+            info += `   ${entityId}: ${currentSeries.length} \n`;
+            while(this._data.length <= 1)this._data.push([]);
+            // this._data[1][serisIndex] =
+            let sampledData = (0, $0de2eca6fadd5daa$export$798b53621063651)(this._data[0][serisIndex], 0.1, false);
+            console.log("0: " + this._data[0][serisIndex].length);
+            console.log("1: " + sampledData.length);
+            const line = {
+                name: entity.name || entity.entity,
+                type: "line",
+                smooth: false,
+                symbol: "none",
+                silient: true,
+                data: this._data[0][serisIndex]
+            };
+            if (this._config.shadow || entity.shadow) Object.assign(line, {
+                lineStyle: {
+                    width: 3,
+                    shadowColor: "rgba(0,0,0,0.3)",
+                    shadowBlur: 10,
+                    shadowOffsetY: 8
+                }
+            });
+            if (this._config.sampling) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
+                sampling: "lttb"
+            });
+            if (this._config.fillAread) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
+                areaStyle: {}
+            });
+            //console.log(line);
+            this._series.push(line);
+            serisIndex++;
+        }
+        let config = this._config;
+        let options = {
+            legend: {
+                data: legends,
+                formatter: function(name) {
+                    const entity = config.getEntityByName(name);
+                    const arr = result[entity.entity];
+                    const lastItem = arr[arr.length - 1];
+                    return name + " (" + lastItem.s + " " + thisCard.getUnitOfMeasurement(entity.entity) + ")";
+                }
+            },
+            xAxis: {
+                type: "time",
+                boundaryGap: false
+            },
+            series: this._series
+        };
+        if (this._config.showInfo) {
+            info += `   sum: ${points} `;
+            (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
+                graphic: {
+                    id: "info",
+                    style: {
+                        text: info
+                    }
+                }
+            });
+        }
+        this._chart.setOption(options);
+        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+        if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == 0) //console.log("setInterval");
+        this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+    }
+    loaderFailed(error) {
+        console.log("Database request failure");
+        console.log(error);
+    }
+    clearRefreshInterval() {
+        if (this._tid != 0) {
+            //console.log("clearInterval");
+            clearTimeout(this._tid);
+            this._tid = 0;
+        }
+    }
     resize() {
         if (this._chart == null) // Create chart when the card size is known
         this.createChart();
-        // console.log(`resize(${this._card.clientWidth}, ${this._card.clientHeight})`)
+        // console.log(`resize(${ this._card.clientWidth }, ${ this._card.clientHeight })`)
         this._chart.resize();
     }
     getCardSize() {
@@ -60371,105 +60600,6 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     }
     sleep(ms) {
         return new Promise((resolve)=>setTimeout(resolve, ms));
-    }
-    dataResponse(result) {
-        //console.log("dataResponse >>")
-        //console.log(result)
-        let thisCard = this;
-        let legends = [];
-        this._series = [];
-        let points = 0;
-        let info = "";
-        if (this._config.showInfo) {
-            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\n`;
-            info += `Renderer: ${this._config.renderer}\n`;
-            info += `Sampling: ${this._config.sampling}\n`;
-            info += "Points:\n";
-        }
-        for(let entityId in result){
-            let entity = this._config.getEntityById(entityId);
-            legends.push(entity.name || entity.entity);
-            const arr = result[entityId];
-            //console.log(a);
-            let data = [];
-            for(let i = 1; i < arr.length; i++){
-                const time = Math.round(arr[i].lu * 1000);
-                data.push([
-                    time,
-                    +arr[i].s
-                ]);
-            }
-            //console.log(data);
-            points += data.length;
-            info += `   ${entityId}: ${data.length}\n`;
-            const line = {
-                name: entity.name || entity.entity,
-                type: "line",
-                smooth: false,
-                symbol: "none",
-                silient: true,
-                data: data
-            };
-            if (this._config.shadow || entity.shadow) Object.assign(line, {
-                lineStyle: {
-                    width: 3,
-                    shadowColor: "rgba(0,0,0,0.3)",
-                    shadowBlur: 10,
-                    shadowOffsetY: 8
-                }
-            });
-            if (this._config.sampling) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
-                sampling: "lttb"
-            });
-            if (this._config.fillAread) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
-                areaStyle: {}
-            });
-            //console.log(line);
-            this._series.push(line);
-        }
-        let config = this._config;
-        let options = {
-            legend: {
-                data: legends,
-                formatter: function(name) {
-                    const entity = config.getEntityByName(name);
-                    const arr = result[entity.entity];
-                    const lastItem = arr[arr.length - 1];
-                    return name + " (" + lastItem.s + " " + thisCard.getUnitOfMeasurement(entity.entity) + ")";
-                }
-            },
-            xAxis: {
-                type: "time",
-                boundaryGap: false
-            },
-            series: this._series
-        };
-        if (this._config.showInfo) {
-            info += `   sum: ${points}`;
-            (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
-                graphic: {
-                    id: "info",
-                    style: {
-                        text: info
-                    }
-                }
-            });
-        }
-        this._chart.setOption(options);
-        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
-        if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == 0) //console.log("setInterval");
-        this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
-    }
-    loaderFailed(error) {
-        console.log("Database request failure");
-        console.log(error);
-    }
-    clearRefreshInterval() {
-        if (this._tid != 0) {
-            //console.log("clearInterval");
-            clearTimeout(this._tid);
-            this._tid = 0;
-        }
     }
     getDeviceClass(entityId) {
         return this._hass.states[entityId]?.attributes?.device_class;

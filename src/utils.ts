@@ -8,8 +8,9 @@ export function toNumber(value: string | null, defaultValue: number): number {
 
 export function subHours(date: Date, hours: number) {
     const hoursToAdd = hours * 60 * 60 * 1000;
-    date.setTime(date.getTime() - hoursToAdd);
-    return date;
+    let newDate = new Date(date.getTime());
+    newDate.setTime(newDate.getTime() - hoursToAdd);
+    return newDate;
 }
 
 export function isObject(item) {

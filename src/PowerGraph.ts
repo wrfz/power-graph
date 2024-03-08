@@ -65,17 +65,17 @@ declare global {
     }
 }
 
+class TimeRange {
+    start: Date;
+    end: Date;
+
+    constructor(start: Date, end: Date) {
+        this.start = start;
+        this.end = end;
+    }
+};
+
 class PowerGraph extends HTMLElement {
-    static TimeRange = class {
-        start: Date;
-        end: Date;
-
-        constructor(start: Date, end: Date) {
-            this.start = start;
-            this.end = end;
-        }
-    };
-
     private _config: GraphConfig;
     private _hass;
     private _elements = { card: Element, style: Element };
@@ -83,13 +83,17 @@ class PowerGraph extends HTMLElement {
     private _chart: echarts.EChartsType;
     private _tid: number = 0;
     private _series: any[] = [];
-    private _range;
+    private _range: TimeRange;
     private _resizeObserver;
+    private _data: number[][][][]; // data quality, series, data points, x/y
 
     constructor() {
         super();
+        this._data = [[]];
+
         this.createContent();
-        this._range = new PowerGraph.TimeRange(subHours(new Date(), 100 * 24), new Date());
+
+        //this._range = new PowerGraph.TimeRange(subHours(new Date(), 1 * 24), new Date());
         this._resizeObserver = new ResizeObserver(entries => { this.resize(); });
     }
 
@@ -97,7 +101,9 @@ class PowerGraph extends HTMLElement {
         //console.log("setConfig");
         this._config = new GraphConfig(config);
         this._config.validate();
-        this._range = new PowerGraph.TimeRange(this._config.start, new Date());
+        //this._range = new PowerGraph.TimeRange(this._config.start, new Date());
+        this._range = new TimeRange(subHours(new Date(), this._config.timRangeInHours), new Date());
+        console.log(this._range);
 
         this.clearRefreshInterval();
     }
@@ -125,23 +131,29 @@ class PowerGraph extends HTMLElement {
         this.shadowRoot!.append(_style, this._card);
     }
 
+    private onScroll(event) {
+        //console.log(event);
+        //const option = this._chart.getOption();
+        //const dataZoom: any[] = option.dataZoom as any[];
+        const { start, end } = event
+        //localStorage.setItem("dataZoom.startTime", startTime);
+        //localStorage.setItem("dataZoom.endTime", endTime);
+
+        //console.log(dataZoom);
+        console.log(event);
+    }
+
     private createChart(): void {
-        //console.log("createChart: " + this._config.renderer);
+        console.log("createChart: " + this._config.renderer);
+        let thisGraph: PowerGraph = this;
 
         this._chart = echarts.init(this._card, null, { renderer: this._config.renderer });
-        let chart: echarts.ECharts = this._chart;
-        this._chart.on('datazoom', function (evt) {
-            const option = chart.getOption();
-            const dataZoom: any[] = option.dataZoom as any[];
-            const { startTime, endTime } = dataZoom[0]
-            localStorage.setItem("dataZoom.startTime", startTime);
-            localStorage.setItem("dataZoom.endTime", endTime);
+        console.log(this);
+        //let chart: echarts.ECharts = this._chart;
+        this._chart.on('datazoom', function (evt) { thisGraph.onScroll(evt); });
 
-            //console.log(startTime, endTime);
-        });
-
-        const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
-        const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
+        //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
+        //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
         //console.log(startTime, endTime);
 
         const size = this._card.clientWidth * this._card.clientWidth;
@@ -274,7 +286,6 @@ class PowerGraph extends HTMLElement {
     }
 
     private requestData(): void {
-        //console.log("requestData: " + this._config.entities.length);
 
         const entities: string[] = [];
         for (const entity of this._config.entities) {
@@ -282,7 +293,30 @@ class PowerGraph extends HTMLElement {
         }
 
         //console.log(this._range);
-        this._range.end = new Date();
+        if (this._data[0].length > 0) {
+            let option: echarts.EChartsCoreOption = this._chart.getOption();
+            const dataZoom: any[] = option.dataZoom as any[];
+            const startInPercent = dataZoom[0].start;
+
+            if (startInPercent == 0) {
+                console.log("request past data");
+                let endDate: Date = new Date(this._data[0][0][0][0] - 1);
+                this._range = new TimeRange(subHours(endDate, 24), endDate);
+            } else {
+                console.log("request new data");
+                this._range.end = new Date();
+
+                let maxAvailableTime: number = 0;
+                for (let dataPoints of this._data[0]) {
+                    let lastDataPoint: number[] = dataPoints[dataPoints.length - 1];
+                    maxAvailableTime = Math.max(maxAvailableTime, lastDataPoint[0]);
+                }
+
+                this._range = new TimeRange(new Date(maxAvailableTime), new Date());
+            }
+        }
+
+        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
 
         const request = {
             type: "history/history_during_period",
@@ -295,45 +329,6 @@ class PowerGraph extends HTMLElement {
         //console.log(request);
 
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
-    }
-
-    resize(): void {
-        if (this._chart == null) {
-            // Create chart when the card size is known
-            this.createChart();
-        }
-        // console.log(`resize(${this._card.clientWidth}, ${this._card.clientHeight})`)
-        this._chart.resize();
-    }
-
-    getCardSize(): number {
-        return 3;
-    }
-
-    // configuration defaults
-    static getStubConfig(): object {
-        return {
-            title: "PV Leistung",
-            entities: [
-                {
-                    entity: "sensor.sofar_15ktl_pv_power_total",
-                    name: "Power Total"
-                },
-                {
-                    entity: "sensor.sofar_15ktl_pv_power_1",
-                    name: "Haus 1"
-                },
-                {
-                    entity: "sensor.sofar_15ktl_pv_power_2",
-                    name: "Haus 2"
-                }
-            ],
-            autorefresh: 10
-        }
-    }
-
-    private sleep(ms): Promise<number> {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     private dataResponse(result) {
@@ -352,26 +347,62 @@ class PowerGraph extends HTMLElement {
         let points = 0;
         let info = "";
         if (this._config.showInfo) {
-            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight}\n`;
-            info += `Renderer: ${this._config.renderer}\n`;
-            info += `Sampling: ${this._config.sampling}\n`;
+            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
+            info += `Renderer: ${this._config.renderer} \n`;
+            info += `Sampling: ${this._config.sampling} \n`;
             info += 'Points:\n';
         }
 
+        let serisIndex = 0;
         for (let entityId in result) {
             let entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
             const arr: DataItem[] = result[entityId];
-            //console.log(a);
 
             let data: number[][] = [];
             for (let i = 1; i < arr.length; i++) {
                 const time: number = Math.round(arr[i].lu * 1000);
                 data.push([time, +arr[i].s]);
             }
+
+            //console.log("a: " + this._data[0].length);
+
+            while (this._data[0].length <= serisIndex) {
+                this._data[0].push([]);
+            }
+
+            const isUnshift: boolean = data.length > 0 && this._data[0][serisIndex].length > 0 && data[0][0] < this._data[0][serisIndex][0][0];
+
+            //console.log("b: " + this._data[0].length);
+
+            console.log("add: " + data.length);
+
+            let currentSeries: number[][] = this._data[0][serisIndex];
+
+            if (data.length > 0) {
+                if (isUnshift) {
+                    currentSeries.unshift(...data);
+                    console.log("unshift: " + data);
+                } else {
+                    currentSeries.push(...data);
+                    console.log("push: " + data);
+                }
+                console.log(this._data);
+            }
+
             //console.log(data);
-            points += data.length;
-            info += `   ${entityId}: ${data.length}\n`;
+            points += currentSeries.length;
+            info += `   ${entityId}: ${currentSeries.length} \n`;
+
+            while (this._data.length <= 1) {
+                this._data.push([]);
+            }
+
+            // this._data[1][serisIndex] =
+            let sampledData: number[][] = simplify(this._data[0][serisIndex], 0.1, false);
+
+            console.log("0: " + this._data[0][serisIndex].length);
+            console.log("1: " + sampledData.length);
 
             const line = {
                 name: entity.name || entity.entity,
@@ -379,7 +410,7 @@ class PowerGraph extends HTMLElement {
                 smooth: false,
                 symbol: 'none',
                 silient: true,
-                data: data
+                data: this._data[0][serisIndex]
             };
             if (this._config.shadow || entity.shadow) {
                 Object.assign(line, {
@@ -399,6 +430,7 @@ class PowerGraph extends HTMLElement {
             }
             //console.log(line);
             this._series.push(line)
+            serisIndex++;
         }
 
         let config: GraphConfig = this._config;
@@ -420,7 +452,7 @@ class PowerGraph extends HTMLElement {
         };
 
         if (this._config.showInfo) {
-            info += `   sum: ${points}`;
+            info += `   sum: ${points} `;
             mergeDeep(options, {
                 graphic: {
                     id: 'info',
@@ -453,6 +485,45 @@ class PowerGraph extends HTMLElement {
             clearTimeout(this._tid);
             this._tid = 0;
         }
+    }
+
+    resize(): void {
+        if (this._chart == null) {
+            // Create chart when the card size is known
+            this.createChart();
+        }
+        // console.log(`resize(${ this._card.clientWidth }, ${ this._card.clientHeight })`)
+        this._chart.resize();
+    }
+
+    getCardSize(): number {
+        return 3;
+    }
+
+    // configuration defaults
+    static getStubConfig(): object {
+        return {
+            title: "PV Leistung",
+            entities: [
+                {
+                    entity: "sensor.sofar_15ktl_pv_power_total",
+                    name: "Power Total"
+                },
+                {
+                    entity: "sensor.sofar_15ktl_pv_power_1",
+                    name: "Haus 1"
+                },
+                {
+                    entity: "sensor.sofar_15ktl_pv_power_2",
+                    name: "Haus 2"
+                }
+            ],
+            autorefresh: 10
+        }
+    }
+
+    private sleep(ms): Promise<number> {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     private getDeviceClass(entityId): string {

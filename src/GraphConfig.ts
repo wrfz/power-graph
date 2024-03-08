@@ -11,6 +11,7 @@ export class GraphConfig {
     autorefresh: string;
     shadow: boolean;
     entities: EntityConfig[];
+    timRangeInHours: number;
     start: Date;
     animation: boolean;
     showTooltip: boolean;
@@ -24,6 +25,7 @@ export class GraphConfig {
         this.animation = true;
         this.renderer = 'canvas';
         this.sampling = false;
+        this.timRangeInHours = 2;
         obj && Object.assign(this, obj);
     }
 
