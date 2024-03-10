@@ -75,6 +75,20 @@ class TimeRange {
     }
 };
 
+type DataItem = {
+    lu: number;
+    s: number;
+};
+
+class Pair<T1, T2> {
+    v1: T1;
+    v2: T2;
+    constructor(v1: T1, v2: T2) {
+        this.v1 = v1;
+        this.v2 = v2;
+    }
+};
+
 class PowerGraph extends HTMLElement {
     private _config: GraphConfig;
     private _hass;
@@ -85,11 +99,15 @@ class PowerGraph extends HTMLElement {
     private _series: any[] = [];
     private _range: TimeRange;
     private _resizeObserver;
+    private _requestInProgress: boolean;
     private _data: number[][][][]; // data quality, series, data points, x/y
+    private _currentSeriesQualityIndex: number;
 
     constructor() {
         super();
         this._data = [[]];
+        this._currentSeriesQualityIndex = 0;
+        this._requestInProgress = false;
 
         this.createContent();
 
@@ -140,7 +158,12 @@ class PowerGraph extends HTMLElement {
         //localStorage.setItem("dataZoom.endTime", endTime);
 
         //console.log(dataZoom);
-        console.log(event);
+        //console.log(event);
+        if (start === 0) {
+            this.requestData();
+        } else {
+            this.updateOptions({});
+        }
     }
 
     private createChart(): void {
@@ -187,17 +210,26 @@ class PowerGraph extends HTMLElement {
                     }
                 }
             },
+            legend: {
+                formatter: function (name) {
+                    const entityConfig: EntityConfig = thisGraph._config.getEntityByName(name);
+                    const entityIndex: number = thisGraph._config.getEntityConfigIndex(entityConfig);
+                    const series: number[][] = thisGraph._data[thisGraph._currentSeriesQualityIndex][entityIndex];
+                    const value: number = series[series.length - 1][1];
+                    return name + " (" + value + " " + thisGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
+                }
+            },
             dataZoom: [
                 {
                     type: 'inside',
-                    start: 0,
-                    end: 100,
+                    startValue: this._range.start.getTime(),
+                    endValue: this._range.end.getTime(),
                     preventDefaultMouseMove: false
                 },
                 {
                     type: 'slider',
-                    start: 0,
-                    end: 100,
+                    startValue: this._range.start.getTime(),
+                    endValue: this._range.end.getTime(),
                     showDetail: false,
                     emphasis: {
                         handleStyle: {
@@ -286,6 +318,10 @@ class PowerGraph extends HTMLElement {
     }
 
     private requestData(): void {
+        if (this._requestInProgress) {
+            console.error("Request already in progress!");
+            return;
+        }
 
         const entities: string[] = [];
         for (const entity of this._config.entities) {
@@ -294,13 +330,13 @@ class PowerGraph extends HTMLElement {
 
         //console.log(this._range);
         if (this._data[0].length > 0) {
-            let option: echarts.EChartsCoreOption = this._chart.getOption();
+            const option: echarts.EChartsCoreOption = this._chart.getOption();
             const dataZoom: any[] = option.dataZoom as any[];
             const startInPercent = dataZoom[0].start;
 
             if (startInPercent == 0) {
                 console.log("request past data");
-                let endDate: Date = new Date(this._data[0][0][0][0] - 1);
+                const endDate: Date = new Date(this._data[0][0][0][0] - 1);
                 this._range = new TimeRange(subHours(endDate, 24), endDate);
             } else {
                 console.log("request new data");
@@ -317,6 +353,7 @@ class PowerGraph extends HTMLElement {
         }
 
         console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
+        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
 
         const request = {
             type: "history/history_during_period",
@@ -328,38 +365,32 @@ class PowerGraph extends HTMLElement {
         };
         //console.log(request);
 
+        this._requestInProgress = true;
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
 
-    private dataResponse(result) {
-        //console.log("dataResponse >>")
+    private dataResponse(result): void {
+        console.log("dataResponse >>")
         //console.log(result)
 
-        let thisCard: PowerGraph = this;
+        const option: echarts.EChartsCoreOption = this._chart.getOption();
 
-        type DataItem = {
-            lu: number;
-            s: number;
-        }
+        //console.log("startTime: " + dataZoom[0].startTime);
 
-        let legends: string[] = [];
-        this._series = [];
-        let points = 0;
-        let info = "";
-        if (this._config.showInfo) {
-            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
-            info += `Renderer: ${this._config.renderer} \n`;
-            info += `Sampling: ${this._config.sampling} \n`;
-            info += 'Points:\n';
-        }
+        const thisCard: PowerGraph = this;
+
+        const legends: string[] = [];
 
         let serisIndex = 0;
-        for (let entityId in result) {
-            let entity: EntityConfig = this._config.getEntityById(entityId);
+        for (const entityId in result) {
+            const entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
             const arr: DataItem[] = result[entityId];
 
-            let data: number[][] = [];
+            //console.log("startTime2: " + startTime);
+            //console.log("endTime2: " + endTime);
+
+            const data: number[][] = [];
             for (let i = 1; i < arr.length; i++) {
                 const time: number = Math.round(arr[i].lu * 1000);
                 data.push([time, +arr[i].s]);
@@ -375,44 +406,86 @@ class PowerGraph extends HTMLElement {
 
             //console.log("b: " + this._data[0].length);
 
-            console.log("add: " + data.length);
+            //console.log("add: " + data.length);
 
-            let currentSeries: number[][] = this._data[0][serisIndex];
+            const currentSeries: number[][] = this._data[0][serisIndex];
 
             if (data.length > 0) {
                 if (isUnshift) {
                     currentSeries.unshift(...data);
-                    console.log("unshift: " + data);
+                    //console.log("unshift: " + data);
                 } else {
                     currentSeries.push(...data);
-                    console.log("push: " + data);
+                    //console.log("push: " + data);
                 }
-                console.log(this._data);
+                //console.log(this._data);
             }
-
-            //console.log(data);
-            points += currentSeries.length;
-            info += `   ${entityId}: ${currentSeries.length} \n`;
 
             while (this._data.length <= 1) {
                 this._data.push([]);
             }
 
-            // this._data[1][serisIndex] =
-            let sampledData: number[][] = simplify(this._data[0][serisIndex], 0.1, false);
+            const sampledData: number[][] = simplify(this._data[0][serisIndex], 0.3, true);
+            this._data[1][serisIndex] = sampledData;
 
-            console.log("0: " + this._data[0][serisIndex].length);
-            console.log("1: " + sampledData.length);
+            serisIndex++;
+        }
+
+        const options = {
+            legend: {
+                data: legends
+            }
+        };
+
+        this.updateOptions(options);
+
+        if (isNumber(this._config.autorefresh) && this._tid == 0) {
+            //console.log("setInterval");
+            this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+        }
+
+        this._requestInProgress = false;
+    }
+
+    private updateOptions(options: echarts.EChartsCoreOption): void {
+
+        const config: GraphConfig = this._config;
+        const displayedTimeRange: Pair<number, number> = this.getDisplayedTimeRange();
+        const displayedTimeRangeNumber: number = displayedTimeRange.v2 - displayedTimeRange.v1;
+        console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + (displayedTimeRangeNumber / 1000 / 60 / 60));
+        this._currentSeriesQualityIndex = (displayedTimeRangeNumber > (3 * 24 * 60 * 60 * 1000)) ? 1 : 0;
+
+        console.log("updateOptions: " + this._currentSeriesQualityIndex);
+
+        let points = 0;
+        let info = "";
+        if (this._config.showInfo) {
+            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
+            info += `Renderer: ${this._config.renderer} \n`;
+            info += `Sampling: ${this._config.sampling} \n`;
+            info += 'Points:\n';
+        }
+        this._series = [];
+        for (const entityConfig of this._config.entities) {
+            const entityIndex: number = this._config.getEntityConfigIndex(entityConfig);
+            const series: number[][] = this._data[this._currentSeriesQualityIndex][entityIndex];
+            const seriesLength: number = series.length;
+            points += seriesLength;
+            info += `   ${entityConfig.entity}: ${seriesLength} \n`;
 
             const line = {
-                name: entity.name || entity.entity,
+                name: entityConfig.name || entityConfig.entity,
                 type: 'line',
                 smooth: false,
                 symbol: 'none',
                 silient: true,
-                data: this._data[0][serisIndex]
+                lineStyle: {
+                    width: 1
+                },
+                step: 'end',
+                data: series
             };
-            if (this._config.shadow || entity.shadow) {
+            if (this._config.shadow || entityConfig.shadow) {
                 Object.assign(line, {
                     lineStyle: {
                         width: 3,
@@ -428,28 +501,13 @@ class PowerGraph extends HTMLElement {
             if (this._config.fillAread) {
                 mergeDeep(line, { areaStyle: {} });
             }
-            //console.log(line);
-            this._series.push(line)
-            serisIndex++;
+
+            this._series.push(line);
         }
 
-        let config: GraphConfig = this._config;
-        let options = {
-            legend: {
-                data: legends,
-                formatter: function (name) {
-                    const entity: EntityConfig = config.getEntityByName(name);
-                    const arr: DataItem[] = result[entity.entity];
-                    const lastItem: DataItem = arr[arr.length - 1];
-                    return name + " (" + lastItem.s + " " + thisCard.getUnitOfMeasurement(entity.entity) + ")";
-                }
-            },
-            xAxis: {
-                type: 'time',
-                boundaryGap: false
-            },
+        mergeDeep(options, {
             series: this._series
-        };
+        });
 
         if (this._config.showInfo) {
             info += `   sum: ${points} `;
@@ -462,21 +520,62 @@ class PowerGraph extends HTMLElement {
                 }
             });
         }
-
         this._chart.setOption(options);
         if (this._config.logOptions) {
             console.log("setOptions: " + JSON.stringify(options));
         }
+    }
 
-        if (isNumber(this._config.autorefresh) && this._tid == 0) {
-            //console.log("setInterval");
-            this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+    private getCurrentTimeRange(): Pair<number, number> {
+        let minTime: number = Number.MAX_SAFE_INTEGER;
+        let maxTime: number = Number.MIN_SAFE_INTEGER;
+        for (const entityConfig of this._config.entities) {
+            const entityIndex: number = this._config.getEntityConfigIndex(entityConfig);
+            const series: number[][] = this._data[0][entityIndex];
+            minTime = Math.min(minTime, series[0][0]);
+            maxTime = Math.max(minTime, series[series.length - 1][0]);
         }
+        return new Pair<number, number>(minTime, maxTime);
+    }
+
+    private getDisplayedTimeRange(): Pair<number, number> {
+        const timeRange: Pair<number, number> = this.getCurrentTimeRange();
+
+        const option: echarts.EChartsCoreOption = this._chart.getOption();
+        const dataZoom: any[] = option.dataZoom as any[];
+        const startInPercent = dataZoom[0].start;
+        const endInPercent = dataZoom[0].end;
+
+        return new Pair<number, number>(
+            timeRange.v1 + (timeRange.v2 - timeRange.v1) * startInPercent / 100,
+            timeRange.v1 + (timeRange.v2 - timeRange.v1) * endInPercent / 100
+        );
     }
 
     private loaderFailed(error): void {
         console.log("Database request failure");
         console.log(error);
+    }
+
+    private getMinTime(data: DataItem[]): number | null {
+        for (let index = 0; index < data.length; ++index) {
+            let time: number = data[index].lu;
+            if (isNumber(time)) {
+                return time;
+            }
+        }
+        return null;
+    }
+
+    private getMaxTime(data: DataItem[]): number | null {
+        for (let index = data.length - 1; index >= 0; --index) {
+            let time: number = data[index].lu;
+            if (isNumber(time)) {
+                //console.log("getMaxTime: " + time);
+                return time;
+            }
+        }
+        return null;
     }
 
     private clearRefreshInterval(): void {

@@ -62,4 +62,15 @@ export class GraphConfig {
         }
         throw Error("Entity name not found: " + name);
     }
+
+    public getEntityConfigIndex(entityConfig: EntityConfig): number {
+        let index = 0;
+        for (const entity of this.entities) {
+            if (entity === entityConfig) {
+                return index;
+            }
+            ++index;
+        }
+        throw Error("Entity config not found: " + entityConfig.entity);
+    }
 }

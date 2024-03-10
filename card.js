@@ -646,6 +646,14 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
         }
         throw Error("Entity name not found: " + name);
     }
+    getEntityConfigIndex(entityConfig) {
+        let index = 0;
+        for (const entity of this.entities){
+            if (entity === entityConfig) return index;
+            ++index;
+        }
+        throw Error("Entity config not found: " + entityConfig.entity);
+    }
 }
 
 
@@ -681,19 +689,19 @@ function $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources) {
 }
 
 
-function $0de2eca6fadd5daa$var$getSqDist(p1, p2) {
+function $0de2eca6fadd5daa$var$getSquareDistance(p1, p2) {
     const dx = p1[0] - p2[0];
     const dy = p1[1] - p2[1];
     return dx * dx + dy * dy;
 }
 // square distance from a point to a segment
-function $0de2eca6fadd5daa$var$getSqSegDist(p, p1, p2) {
+function $0de2eca6fadd5daa$var$getSquareSegmentDistance(p, p1, p2) {
     let x = p1[0];
     let y = p1[1];
     let dx = p2[0] - x;
     let dy = p2[1] - y;
     if (dx !== 0 || dy !== 0) {
-        var t = ((p[0] - x) * dx + (p[1] - y) * dy) / (dx * dx + dy * dy);
+        const t = ((p[0] - x) * dx + (p[1] - y) * dy) / (dx * dx + dy * dy);
         if (t > 1) {
             x = p2[0];
             y = p2[1];
@@ -708,7 +716,7 @@ function $0de2eca6fadd5daa$var$getSqSegDist(p, p1, p2) {
 }
 // rest of the code doesn't care about point format
 // basic distance-based simplification
-function $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance) {
+function $0de2eca6fadd5daa$var$simplifyRadialDist(points, squareTolerance) {
     let prevPoint = points[0];
     const newPoints = [
         prevPoint
@@ -716,7 +724,7 @@ function $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance) {
     let point = null;
     for(let i = 1, len = points.length; i < len; i++){
         point = points[i];
-        if ($0de2eca6fadd5daa$var$getSqDist(point, prevPoint) > sqTolerance) {
+        if ($0de2eca6fadd5daa$var$getSquareDistance(point, prevPoint) > squareTolerance) {
             newPoints.push(point);
             prevPoint = point;
         }
@@ -724,37 +732,52 @@ function $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance) {
     if (point != null && prevPoint !== point) newPoints.push(point);
     return newPoints;
 }
-function $0de2eca6fadd5daa$var$simplifyDPStep(points, first, last, sqTolerance, simplified) {
-    let maxSqDist = sqTolerance;
+function $0de2eca6fadd5daa$var$simplifyDPStep(points, first, last, squareTolerance, simplified) {
+    let maxSquareDistance = squareTolerance;
     let index = 0;
     for(let i = first + 1; i < last; i++){
-        const sqDist = $0de2eca6fadd5daa$var$getSqSegDist(points[i], points[first], points[last]);
-        if (sqDist > maxSqDist) {
+        const sqDist = $0de2eca6fadd5daa$var$getSquareSegmentDistance(points[i], points[first], points[last]);
+        if (sqDist > maxSquareDistance) {
             index = i;
-            maxSqDist = sqDist;
+            maxSquareDistance = sqDist;
         }
     }
-    if (maxSqDist > sqTolerance) {
-        if (index - first > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, first, index, sqTolerance, simplified);
+    if (maxSquareDistance > squareTolerance) {
+        if (index - first > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, first, index, squareTolerance, simplified);
         simplified.push(points[index]);
-        if (last - index > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, index, last, sqTolerance, simplified);
+        if (last - index > 1) $0de2eca6fadd5daa$var$simplifyDPStep(points, index, last, squareTolerance, simplified);
     }
 }
 // simplification using Ramer-Douglas-Peucker algorithm
-function $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, sqTolerance) {
-    var last = points.length - 1;
-    var simplified = [
-        points[0]
-    ];
-    $0de2eca6fadd5daa$var$simplifyDPStep(points, 0, last, sqTolerance, simplified);
-    simplified.push(points[last]);
+function $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, squareTolerance) {
+    const simplified = [];
+    let first = null;
+    for(let index = 0; index < points.length; ++index){
+        const value = points[index][1];
+        if (!isNaN(value) && value != null) {
+            if (first == null) first = index;
+        } else if (first != null) {
+            const last = index - 1;
+            simplified.push(points[first]);
+            $0de2eca6fadd5daa$var$simplifyDPStep(points, first, last, squareTolerance, simplified);
+            simplified.push(points[last]);
+            simplified.push(points[index]); // add point with NaN value
+            first = null;
+        }
+    }
+    if (first != null) {
+        const last = points.length - 1;
+        simplified.push(points[first]);
+        $0de2eca6fadd5daa$var$simplifyDPStep(points, first, last, squareTolerance, simplified);
+        simplified.push(points[last]);
+    }
     return simplified;
 }
 function $0de2eca6fadd5daa$export$798b53621063651(points, tolerance, highestQuality) {
     if (points.length <= 2) return points;
-    const sqTolerance = tolerance !== undefined ? tolerance * tolerance : 1;
-    points = highestQuality ? points : $0de2eca6fadd5daa$var$simplifyRadialDist(points, sqTolerance);
-    points = $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, sqTolerance);
+    const squareTolerance = tolerance !== undefined ? tolerance * tolerance : 1;
+    points = highestQuality ? points : $0de2eca6fadd5daa$var$simplifyRadialDist(points, squareTolerance);
+    points = $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, squareTolerance);
     return points;
 }
 
@@ -60225,6 +60248,12 @@ class $1de2f2772a630298$var$TimeRange {
         this.end = end;
     }
 }
+class $1de2f2772a630298$var$Pair {
+    constructor(v1, v2){
+        this.v1 = v1;
+        this.v2 = v2;
+    }
+}
 class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     constructor(){
         super();
@@ -60237,6 +60266,8 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this._data = [
             []
         ];
+        this._currentSeriesQualityIndex = 0;
+        this._requestInProgress = false;
         this.createContent();
         //this._range = new PowerGraph.TimeRange(subHours(new Date(), 1 * 24), new Date());
         this._resizeObserver = new (0, $e9848ff2edce194c$export$9caf76241ca21a11)((entries)=>{
@@ -60280,7 +60311,9 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //localStorage.setItem("dataZoom.startTime", startTime);
         //localStorage.setItem("dataZoom.endTime", endTime);
         //console.log(dataZoom);
-        console.log(event);
+        //console.log(event);
+        if (start === 0) this.requestData();
+        else this.updateOptions({});
     }
     createChart() {
         console.log("createChart: " + this._config.renderer);
@@ -60325,17 +60358,26 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                     }
                 }
             },
+            legend: {
+                formatter: function(name) {
+                    const entityConfig = thisGraph._config.getEntityByName(name);
+                    const entityIndex = thisGraph._config.getEntityConfigIndex(entityConfig);
+                    const series = thisGraph._data[thisGraph._currentSeriesQualityIndex][entityIndex];
+                    const value = series[series.length - 1][1];
+                    return name + " (" + value + " " + thisGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
+                }
+            },
             dataZoom: [
                 {
                     type: "inside",
-                    start: 0,
-                    end: 100,
+                    startValue: this._range.start.getTime(),
+                    endValue: this._range.end.getTime(),
                     preventDefaultMouseMove: false
                 },
                 {
                     type: "slider",
-                    start: 0,
-                    end: 100,
+                    startValue: this._range.start.getTime(),
+                    endValue: this._range.end.getTime(),
                     showDetail: false,
                     emphasis: {
                         handleStyle: {
@@ -60413,16 +60455,20 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this.requestData();
     }
     requestData() {
+        if (this._requestInProgress) {
+            console.error("Request already in progress!");
+            return;
+        }
         const entities = [];
         for (const entity of this._config.entities)entities.push(entity.entity);
         //console.log(this._range);
         if (this._data[0].length > 0) {
-            let option = this._chart.getOption();
+            const option = this._chart.getOption();
             const dataZoom = option.dataZoom;
             const startInPercent = dataZoom[0].start;
             if (startInPercent == 0) {
                 console.log("request past data");
-                let endDate = new Date(this._data[0][0][0][0] - 1);
+                const endDate = new Date(this._data[0][0][0][0] - 1);
                 this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(endDate, 24), endDate);
             } else {
                 console.log("request new data");
@@ -60436,6 +60482,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             }
         }
         console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
+        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
         const request = {
             type: "history/history_during_period",
             start_time: this._range.start.toISOString(),
@@ -60445,28 +60492,24 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             entity_ids: entities
         };
         //console.log(request);
+        this._requestInProgress = true;
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
     dataResponse(result) {
-        //console.log("dataResponse >>")
+        console.log("dataResponse >>");
         //console.log(result)
-        let thisCard = this;
-        let legends = [];
-        this._series = [];
-        let points = 0;
-        let info = "";
-        if (this._config.showInfo) {
-            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
-            info += `Renderer: ${this._config.renderer} \n`;
-            info += `Sampling: ${this._config.sampling} \n`;
-            info += "Points:\n";
-        }
+        const option = this._chart.getOption();
+        //console.log("startTime: " + dataZoom[0].startTime);
+        const thisCard = this;
+        const legends = [];
         let serisIndex = 0;
-        for(let entityId in result){
-            let entity = this._config.getEntityById(entityId);
+        for(const entityId in result){
+            const entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
             const arr = result[entityId];
-            let data = [];
+            //console.log("startTime2: " + startTime);
+            //console.log("endTime2: " + endTime);
+            const data = [];
             for(let i = 1; i < arr.length; i++){
                 const time = Math.round(arr[i].lu * 1000);
                 data.push([
@@ -60478,35 +60521,62 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             while(this._data[0].length <= serisIndex)this._data[0].push([]);
             const isUnshift = data.length > 0 && this._data[0][serisIndex].length > 0 && data[0][0] < this._data[0][serisIndex][0][0];
             //console.log("b: " + this._data[0].length);
-            console.log("add: " + data.length);
-            let currentSeries = this._data[0][serisIndex];
+            //console.log("add: " + data.length);
+            const currentSeries = this._data[0][serisIndex];
             if (data.length > 0) {
-                if (isUnshift) {
-                    currentSeries.unshift(...data);
-                    console.log("unshift: " + data);
-                } else {
-                    currentSeries.push(...data);
-                    console.log("push: " + data);
-                }
-                console.log(this._data);
+                if (isUnshift) currentSeries.unshift(...data);
+                else currentSeries.push(...data);
             }
-            //console.log(data);
-            points += currentSeries.length;
-            info += `   ${entityId}: ${currentSeries.length} \n`;
             while(this._data.length <= 1)this._data.push([]);
-            // this._data[1][serisIndex] =
-            let sampledData = (0, $0de2eca6fadd5daa$export$798b53621063651)(this._data[0][serisIndex], 0.1, false);
-            console.log("0: " + this._data[0][serisIndex].length);
-            console.log("1: " + sampledData.length);
+            const sampledData = (0, $0de2eca6fadd5daa$export$798b53621063651)(this._data[0][serisIndex], 0.3, true);
+            this._data[1][serisIndex] = sampledData;
+            serisIndex++;
+        }
+        const options = {
+            legend: {
+                data: legends
+            }
+        };
+        this.updateOptions(options);
+        if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == 0) //console.log("setInterval");
+        this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+        this._requestInProgress = false;
+    }
+    updateOptions(options) {
+        const config = this._config;
+        const displayedTimeRange = this.getDisplayedTimeRange();
+        const displayedTimeRangeNumber = displayedTimeRange.v2 - displayedTimeRange.v1;
+        console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + displayedTimeRangeNumber / 1000 / 60 / 60);
+        this._currentSeriesQualityIndex = displayedTimeRangeNumber > 259200000 ? 1 : 0;
+        console.log("updateOptions: " + this._currentSeriesQualityIndex);
+        let points = 0;
+        let info = "";
+        if (this._config.showInfo) {
+            info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
+            info += `Renderer: ${this._config.renderer} \n`;
+            info += `Sampling: ${this._config.sampling} \n`;
+            info += "Points:\n";
+        }
+        this._series = [];
+        for (const entityConfig of this._config.entities){
+            const entityIndex = this._config.getEntityConfigIndex(entityConfig);
+            const series = this._data[this._currentSeriesQualityIndex][entityIndex];
+            const seriesLength = series.length;
+            points += seriesLength;
+            info += `   ${entityConfig.entity}: ${seriesLength} \n`;
             const line = {
-                name: entity.name || entity.entity,
+                name: entityConfig.name || entityConfig.entity,
                 type: "line",
                 smooth: false,
                 symbol: "none",
                 silient: true,
-                data: this._data[0][serisIndex]
+                lineStyle: {
+                    width: 1
+                },
+                step: "end",
+                data: series
             };
-            if (this._config.shadow || entity.shadow) Object.assign(line, {
+            if (this._config.shadow || entityConfig.shadow) Object.assign(line, {
                 lineStyle: {
                     width: 3,
                     shadowColor: "rgba(0,0,0,0.3)",
@@ -60520,27 +60590,11 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             if (this._config.fillAread) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
                 areaStyle: {}
             });
-            //console.log(line);
             this._series.push(line);
-            serisIndex++;
         }
-        let config = this._config;
-        let options = {
-            legend: {
-                data: legends,
-                formatter: function(name) {
-                    const entity = config.getEntityByName(name);
-                    const arr = result[entity.entity];
-                    const lastItem = arr[arr.length - 1];
-                    return name + " (" + lastItem.s + " " + thisCard.getUnitOfMeasurement(entity.entity) + ")";
-                }
-            },
-            xAxis: {
-                type: "time",
-                boundaryGap: false
-            },
+        (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
             series: this._series
-        };
+        });
         if (this._config.showInfo) {
             info += `   sum: ${points} `;
             (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(options, {
@@ -60554,12 +60608,44 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         }
         this._chart.setOption(options);
         if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
-        if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == 0) //console.log("setInterval");
-        this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+    }
+    getCurrentTimeRange() {
+        let minTime = Number.MAX_SAFE_INTEGER;
+        let maxTime = Number.MIN_SAFE_INTEGER;
+        for (const entityConfig of this._config.entities){
+            const entityIndex = this._config.getEntityConfigIndex(entityConfig);
+            const series = this._data[0][entityIndex];
+            minTime = Math.min(minTime, series[0][0]);
+            maxTime = Math.max(minTime, series[series.length - 1][0]);
+        }
+        return new $1de2f2772a630298$var$Pair(minTime, maxTime);
+    }
+    getDisplayedTimeRange() {
+        const timeRange = this.getCurrentTimeRange();
+        const option = this._chart.getOption();
+        const dataZoom = option.dataZoom;
+        const startInPercent = dataZoom[0].start;
+        const endInPercent = dataZoom[0].end;
+        return new $1de2f2772a630298$var$Pair(timeRange.v1 + (timeRange.v2 - timeRange.v1) * startInPercent / 100, timeRange.v1 + (timeRange.v2 - timeRange.v1) * endInPercent / 100);
     }
     loaderFailed(error) {
         console.log("Database request failure");
         console.log(error);
+    }
+    getMinTime(data) {
+        for(let index = 0; index < data.length; ++index){
+            let time = data[index].lu;
+            if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(time)) return time;
+        }
+        return null;
+    }
+    getMaxTime(data) {
+        for(let index = data.length - 1; index >= 0; --index){
+            let time = data[index].lu;
+            if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(time)) //console.log("getMaxTime: " + time);
+            return time;
+        }
+        return null;
     }
     clearRefreshInterval() {
         if (this._tid != 0) {
