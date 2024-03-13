@@ -20,6 +20,7 @@ export class GraphConfig {
     renderer: 'canvas' | 'svg';
     showInfo: boolean;
     logOptions: boolean;
+    qualities: number[]
 
     constructor(obj) {
         this.animation = true;

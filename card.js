@@ -657,38 +657,6 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
 }
 
 
-function $4bc1678c98a41ad1$export$7e4aa119212bc614(value) {
-    return value != null && value !== "" && !isNaN(Number(value.toString()));
-}
-function $4bc1678c98a41ad1$export$a0a81dc3380ce7d3(value, defaultValue) {
-    return value != null && $4bc1678c98a41ad1$export$7e4aa119212bc614(value) ? +value : defaultValue;
-}
-function $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71(date, hours) {
-    const hoursToAdd = hours * 3600000;
-    let newDate = new Date(date.getTime());
-    newDate.setTime(newDate.getTime() - hoursToAdd);
-    return newDate;
-}
-function $4bc1678c98a41ad1$export$a6cdc56e425d0d0a(item) {
-    return item && typeof item === "object" && !Array.isArray(item);
-}
-function $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources) {
-    if (!sources.length) return target;
-    const source = sources.shift();
-    if ($4bc1678c98a41ad1$export$a6cdc56e425d0d0a(target) && $4bc1678c98a41ad1$export$a6cdc56e425d0d0a(source)) {
-        for(const key in source)if ($4bc1678c98a41ad1$export$a6cdc56e425d0d0a(source[key])) {
-            if (!target[key]) Object.assign(target, {
-                [key]: {}
-            });
-            $4bc1678c98a41ad1$export$dd702b3c8240390c(target[key], source[key]);
-        } else Object.assign(target, {
-            [key]: source[key]
-        });
-    }
-    return $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources);
-}
-
-
 function $0de2eca6fadd5daa$var$getSquareDistance(p1, p2) {
     const dx = p1[0] - p2[0];
     const dy = p1[1] - p2[1];
@@ -779,6 +747,141 @@ function $0de2eca6fadd5daa$export$798b53621063651(points, tolerance, highestQual
     points = highestQuality ? points : $0de2eca6fadd5daa$var$simplifyRadialDist(points, squareTolerance);
     points = $0de2eca6fadd5daa$var$simplifyDouglasPeucker(points, squareTolerance);
     return points;
+}
+
+
+class $602c9115d317b38e$export$d63d7cff08fe4dc9 {
+    constructor(v1, v2){
+        this.v1 = v1;
+        this.v2 = v2;
+    }
+}
+class $602c9115d317b38e$var$DataBlock {
+    constructor(data){
+        this._data = data != null ? data : [];
+    }
+    getTimeRange() {
+        return new $602c9115d317b38e$export$d63d7cff08fe4dc9(this._data[0][0], this._data[this._data.length - 1][0]);
+    }
+    hasData() {
+        return this._data.length > 0;
+    }
+    getData() {
+        return this._data;
+    }
+    setData(data) {
+        this._data = data;
+    }
+    add(data) {
+        const isUnshift = data.length > 0 && this._data.length > 0 && data[0][0] < this._data[0][0];
+        if (isUnshift) {
+            this._data.unshift(...data);
+            console.log("unshift: " + data);
+        } else {
+            this._data.push(...data);
+            console.log("push: " + data);
+        }
+    }
+    simplify(quality) {
+        return (0, $0de2eca6fadd5daa$export$798b53621063651)(this._data, quality, true);
+    }
+}
+class $602c9115d317b38e$var$EntityData {
+    constructor(graphData){
+        this._graphData = graphData;
+        this._dataBlock = [
+            new $602c9115d317b38e$var$DataBlock()
+        ];
+    }
+    hasData() {
+        const dataBlock = this._dataBlock[0];
+        return dataBlock.hasData();
+    }
+    getData(entityQualityIndex) {
+        const dataBlock = this._dataBlock[entityQualityIndex];
+        return dataBlock.getData();
+    }
+    add(data) {
+        const dataBlock = this._dataBlock[0];
+        dataBlock.add(data);
+        let index = 0;
+        for (const quality of this._graphData.getQualities()){
+            ++index;
+            while(this._dataBlock.length <= index)this._dataBlock.push(new $602c9115d317b38e$var$DataBlock());
+            const sampledData = dataBlock.simplify(quality);
+            this._dataBlock[index].setData(sampledData);
+        }
+    }
+    getCurrentTimeRange() {
+        const dataBlock = this._dataBlock[0];
+        return dataBlock.getTimeRange();
+    }
+}
+class $602c9115d317b38e$export$804ce8cdc3ef0047 {
+    constructor(){
+        this._entityData = [];
+    }
+    setQualities(qualities) {
+        this._qualities = qualities;
+    }
+    getQualities() {
+        return this._qualities;
+    }
+    hasData() {
+        const entityData = this._entityData[0];
+        return entityData != null ? entityData.hasData() : false;
+    }
+    getData(entityIndex, entityQualityIndex) {
+        const entityData = this._entityData[entityIndex];
+        return entityData.getData(entityQualityIndex);
+    }
+    add(entityIndex, data) {
+        while(this._entityData.length - 1 < entityIndex)this._entityData.push(new $602c9115d317b38e$var$EntityData(this));
+        const entityData = this._entityData[entityIndex];
+        entityData.add(data);
+    }
+    getCurrentTimeRange() {
+        let minTime = Number.MAX_SAFE_INTEGER;
+        let maxTime = Number.MIN_SAFE_INTEGER;
+        for (const entityData of this._entityData){
+            const pair = entityData.getCurrentTimeRange();
+            minTime = Math.min(minTime, pair.v1);
+            maxTime = Math.max(minTime, pair.v2);
+        }
+        return new $602c9115d317b38e$export$d63d7cff08fe4dc9(minTime, maxTime);
+    }
+}
+
+
+function $4bc1678c98a41ad1$export$7e4aa119212bc614(value) {
+    return value != null && value !== "" && !isNaN(Number(value.toString()));
+}
+function $4bc1678c98a41ad1$export$a0a81dc3380ce7d3(value, defaultValue) {
+    return value != null && $4bc1678c98a41ad1$export$7e4aa119212bc614(value) ? +value : defaultValue;
+}
+function $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71(date, hours) {
+    const hoursToAdd = hours * 3600000;
+    let newDate = new Date(date.getTime());
+    newDate.setTime(newDate.getTime() - hoursToAdd);
+    return newDate;
+}
+function $4bc1678c98a41ad1$export$a6cdc56e425d0d0a(item) {
+    return item && typeof item === "object" && !Array.isArray(item);
+}
+function $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources) {
+    if (!sources.length) return target;
+    const source = sources.shift();
+    if ($4bc1678c98a41ad1$export$a6cdc56e425d0d0a(target) && $4bc1678c98a41ad1$export$a6cdc56e425d0d0a(source)) {
+        for(const key in source)if ($4bc1678c98a41ad1$export$a6cdc56e425d0d0a(source[key])) {
+            if (!target[key]) Object.assign(target, {
+                [key]: {}
+            });
+            $4bc1678c98a41ad1$export$dd702b3c8240390c(target[key], source[key]);
+        } else Object.assign(target, {
+            [key]: source[key]
+        });
+    }
+    return $4bc1678c98a41ad1$export$dd702b3c8240390c(target, ...sources);
 }
 
 
@@ -60248,12 +60351,6 @@ class $1de2f2772a630298$var$TimeRange {
         this.end = end;
     }
 }
-class $1de2f2772a630298$var$Pair {
-    constructor(v1, v2){
-        this.v1 = v1;
-        this.v2 = v2;
-    }
-}
 class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     constructor(){
         super();
@@ -60263,9 +60360,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         };
         this._tid = 0;
         this._series = [];
-        this._data = [
-            []
-        ];
+        this._data = new (0, $602c9115d317b38e$export$804ce8cdc3ef0047)();
         this._currentSeriesQualityIndex = 0;
         this._requestInProgress = false;
         this.createContent();
@@ -60281,6 +60376,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //this._range = new PowerGraph.TimeRange(this._config.start, new Date());
         this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(new Date(), this._config.timRangeInHours), new Date());
         console.log(this._range);
+        this._data.setQualities(this._config.qualities);
         this.clearRefreshInterval();
     }
     set hass(hass) {
@@ -60362,7 +60458,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 formatter: function(name) {
                     const entityConfig = thisGraph._config.getEntityByName(name);
                     const entityIndex = thisGraph._config.getEntityConfigIndex(entityConfig);
-                    const series = thisGraph._data[thisGraph._currentSeriesQualityIndex][entityIndex];
+                    const series = thisGraph._data.getData(entityIndex, thisGraph._currentSeriesQualityIndex);
                     const value = series[series.length - 1][1];
                     return name + " (" + value + " " + thisGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
                 }
@@ -60370,12 +60466,14 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             dataZoom: [
                 {
                     type: "inside",
+                    // rangeMode: ['value', 'value'],
                     startValue: this._range.start.getTime(),
                     endValue: this._range.end.getTime(),
                     preventDefaultMouseMove: false
                 },
                 {
                     type: "slider",
+                    // rangeMode: ['value', 'value'],
                     startValue: this._range.start.getTime(),
                     endValue: this._range.end.getTime(),
                     showDetail: false,
@@ -60462,22 +60560,20 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         const entities = [];
         for (const entity of this._config.entities)entities.push(entity.entity);
         //console.log(this._range);
-        if (this._data[0].length > 0) {
+        if (this._data.hasData()) {
             const option = this._chart.getOption();
             const dataZoom = option.dataZoom;
             const startInPercent = dataZoom[0].start;
             if (startInPercent == 0) {
                 console.log("request past data");
-                const endDate = new Date(this._data[0][0][0][0] - 1);
+                const timeRange = this._data.getCurrentTimeRange();
+                const endDate = new Date(timeRange.v1 - 1);
                 this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(endDate, 24), endDate);
             } else {
                 console.log("request new data");
                 this._range.end = new Date();
-                let maxAvailableTime = 0;
-                for (let dataPoints of this._data[0]){
-                    let lastDataPoint = dataPoints[dataPoints.length - 1];
-                    maxAvailableTime = Math.max(maxAvailableTime, lastDataPoint[0]);
-                }
+                const timeRange = this._data.getCurrentTimeRange();
+                const maxAvailableTime = timeRange.v2;
                 this._range = new $1de2f2772a630298$var$TimeRange(new Date(maxAvailableTime), new Date());
             }
         }
@@ -60502,7 +60598,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //console.log("startTime: " + dataZoom[0].startTime);
         const thisCard = this;
         const legends = [];
-        let serisIndex = 0;
+        let seriesIndex = 0;
         for(const entityId in result){
             const entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
@@ -60517,20 +60613,8 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                     +arr[i].s
                 ]);
             }
-            //console.log("a: " + this._data[0].length);
-            while(this._data[0].length <= serisIndex)this._data[0].push([]);
-            const isUnshift = data.length > 0 && this._data[0][serisIndex].length > 0 && data[0][0] < this._data[0][serisIndex][0][0];
-            //console.log("b: " + this._data[0].length);
-            //console.log("add: " + data.length);
-            const currentSeries = this._data[0][serisIndex];
-            if (data.length > 0) {
-                if (isUnshift) currentSeries.unshift(...data);
-                else currentSeries.push(...data);
-            }
-            while(this._data.length <= 1)this._data.push([]);
-            const sampledData = (0, $0de2eca6fadd5daa$export$798b53621063651)(this._data[0][serisIndex], 0.3, true);
-            this._data[1][serisIndex] = sampledData;
-            serisIndex++;
+            this._data.add(seriesIndex, data);
+            seriesIndex++;
         }
         const options = {
             legend: {
@@ -60555,12 +60639,13 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
             info += `Renderer: ${this._config.renderer} \n`;
             info += `Sampling: ${this._config.sampling} \n`;
+            info += `currentSeriesQualityIndex: ${this._currentSeriesQualityIndex}\n`;
             info += "Points:\n";
         }
         this._series = [];
         for (const entityConfig of this._config.entities){
             const entityIndex = this._config.getEntityConfigIndex(entityConfig);
-            const series = this._data[this._currentSeriesQualityIndex][entityIndex];
+            const series = this._data.getData(entityIndex, this._currentSeriesQualityIndex);
             const seriesLength = series.length;
             points += seriesLength;
             info += `   ${entityConfig.entity}: ${seriesLength} \n`;
@@ -60610,15 +60695,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
     }
     getCurrentTimeRange() {
-        let minTime = Number.MAX_SAFE_INTEGER;
-        let maxTime = Number.MIN_SAFE_INTEGER;
-        for (const entityConfig of this._config.entities){
-            const entityIndex = this._config.getEntityConfigIndex(entityConfig);
-            const series = this._data[0][entityIndex];
-            minTime = Math.min(minTime, series[0][0]);
-            maxTime = Math.max(minTime, series[series.length - 1][0]);
-        }
-        return new $1de2f2772a630298$var$Pair(minTime, maxTime);
+        return this._data.getCurrentTimeRange();
     }
     getDisplayedTimeRange() {
         const timeRange = this.getCurrentTimeRange();
@@ -60626,7 +60703,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         const dataZoom = option.dataZoom;
         const startInPercent = dataZoom[0].start;
         const endInPercent = dataZoom[0].end;
-        return new $1de2f2772a630298$var$Pair(timeRange.v1 + (timeRange.v2 - timeRange.v1) * startInPercent / 100, timeRange.v1 + (timeRange.v2 - timeRange.v1) * endInPercent / 100);
+        return new (0, $602c9115d317b38e$export$d63d7cff08fe4dc9)(timeRange.v1 + (timeRange.v2 - timeRange.v1) * startInPercent / 100, timeRange.v1 + (timeRange.v2 - timeRange.v1) * endInPercent / 100);
     }
     loaderFailed(error) {
         console.log("Database request failure");

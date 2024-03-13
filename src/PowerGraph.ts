@@ -10,8 +10,8 @@ import {
 } from "lit";
 
 import { GraphConfig, EntityConfig } from './GraphConfig';
+import { Pair, GraphData } from './GraphData'
 import { mergeDeep, isNumber, toNumber, subHours } from './utils';
-import { simplify } from './simplify';
 
 import * as echarts from 'echarts/core';
 
@@ -80,15 +80,6 @@ type DataItem = {
     s: number;
 };
 
-class Pair<T1, T2> {
-    v1: T1;
-    v2: T2;
-    constructor(v1: T1, v2: T2) {
-        this.v1 = v1;
-        this.v2 = v2;
-    }
-};
-
 class PowerGraph extends HTMLElement {
     private _config: GraphConfig;
     private _hass;
@@ -100,12 +91,12 @@ class PowerGraph extends HTMLElement {
     private _range: TimeRange;
     private _resizeObserver;
     private _requestInProgress: boolean;
-    private _data: number[][][][]; // data quality, series, data points, x/y
+    private _data: GraphData;
     private _currentSeriesQualityIndex: number;
 
     constructor() {
         super();
-        this._data = [[]];
+        this._data = new GraphData();
         this._currentSeriesQualityIndex = 0;
         this._requestInProgress = false;
 
@@ -122,6 +113,8 @@ class PowerGraph extends HTMLElement {
         //this._range = new PowerGraph.TimeRange(this._config.start, new Date());
         this._range = new TimeRange(subHours(new Date(), this._config.timRangeInHours), new Date());
         console.log(this._range);
+
+        this._data.setQualities(this._config.qualities);
 
         this.clearRefreshInterval();
     }
@@ -214,7 +207,7 @@ class PowerGraph extends HTMLElement {
                 formatter: function (name) {
                     const entityConfig: EntityConfig = thisGraph._config.getEntityByName(name);
                     const entityIndex: number = thisGraph._config.getEntityConfigIndex(entityConfig);
-                    const series: number[][] = thisGraph._data[thisGraph._currentSeriesQualityIndex][entityIndex];
+                    const series: number[][] = thisGraph._data.getData(entityIndex, thisGraph._currentSeriesQualityIndex);
                     const value: number = series[series.length - 1][1];
                     return name + " (" + value + " " + thisGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
                 }
@@ -222,12 +215,14 @@ class PowerGraph extends HTMLElement {
             dataZoom: [
                 {
                     type: 'inside',
+                    // rangeMode: ['value', 'value'],
                     startValue: this._range.start.getTime(),
                     endValue: this._range.end.getTime(),
                     preventDefaultMouseMove: false
                 },
                 {
                     type: 'slider',
+                    // rangeMode: ['value', 'value'],
                     startValue: this._range.start.getTime(),
                     endValue: this._range.end.getTime(),
                     showDetail: false,
@@ -329,25 +324,22 @@ class PowerGraph extends HTMLElement {
         }
 
         //console.log(this._range);
-        if (this._data[0].length > 0) {
+        if (this._data.hasData()) {
             const option: echarts.EChartsCoreOption = this._chart.getOption();
             const dataZoom: any[] = option.dataZoom as any[];
             const startInPercent = dataZoom[0].start;
 
             if (startInPercent == 0) {
                 console.log("request past data");
-                const endDate: Date = new Date(this._data[0][0][0][0] - 1);
+                const timeRange: Pair<number, number> = this._data.getCurrentTimeRange();
+                const endDate: Date = new Date(timeRange.v1 - 1);
                 this._range = new TimeRange(subHours(endDate, 24), endDate);
             } else {
                 console.log("request new data");
                 this._range.end = new Date();
 
-                let maxAvailableTime: number = 0;
-                for (let dataPoints of this._data[0]) {
-                    let lastDataPoint: number[] = dataPoints[dataPoints.length - 1];
-                    maxAvailableTime = Math.max(maxAvailableTime, lastDataPoint[0]);
-                }
-
+                const timeRange: Pair<number, number> = this._data.getCurrentTimeRange();
+                const maxAvailableTime: number = timeRange.v2;
                 this._range = new TimeRange(new Date(maxAvailableTime), new Date());
             }
         }
@@ -381,7 +373,7 @@ class PowerGraph extends HTMLElement {
 
         const legends: string[] = [];
 
-        let serisIndex = 0;
+        let seriesIndex = 0;
         for (const entityId in result) {
             const entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
@@ -396,39 +388,9 @@ class PowerGraph extends HTMLElement {
                 data.push([time, +arr[i].s]);
             }
 
-            //console.log("a: " + this._data[0].length);
+            this._data.add(seriesIndex, data);
 
-            while (this._data[0].length <= serisIndex) {
-                this._data[0].push([]);
-            }
-
-            const isUnshift: boolean = data.length > 0 && this._data[0][serisIndex].length > 0 && data[0][0] < this._data[0][serisIndex][0][0];
-
-            //console.log("b: " + this._data[0].length);
-
-            //console.log("add: " + data.length);
-
-            const currentSeries: number[][] = this._data[0][serisIndex];
-
-            if (data.length > 0) {
-                if (isUnshift) {
-                    currentSeries.unshift(...data);
-                    //console.log("unshift: " + data);
-                } else {
-                    currentSeries.push(...data);
-                    //console.log("push: " + data);
-                }
-                //console.log(this._data);
-            }
-
-            while (this._data.length <= 1) {
-                this._data.push([]);
-            }
-
-            const sampledData: number[][] = simplify(this._data[0][serisIndex], 0.3, true);
-            this._data[1][serisIndex] = sampledData;
-
-            serisIndex++;
+            seriesIndex++;
         }
 
         const options = {
@@ -463,12 +425,13 @@ class PowerGraph extends HTMLElement {
             info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
             info += `Renderer: ${this._config.renderer} \n`;
             info += `Sampling: ${this._config.sampling} \n`;
+            info += `currentSeriesQualityIndex: ${this._currentSeriesQualityIndex}\n`;
             info += 'Points:\n';
         }
         this._series = [];
         for (const entityConfig of this._config.entities) {
             const entityIndex: number = this._config.getEntityConfigIndex(entityConfig);
-            const series: number[][] = this._data[this._currentSeriesQualityIndex][entityIndex];
+            const series: number[][] = this._data.getData(entityIndex, this._currentSeriesQualityIndex);
             const seriesLength: number = series.length;
             points += seriesLength;
             info += `   ${entityConfig.entity}: ${seriesLength} \n`;
@@ -527,15 +490,7 @@ class PowerGraph extends HTMLElement {
     }
 
     private getCurrentTimeRange(): Pair<number, number> {
-        let minTime: number = Number.MAX_SAFE_INTEGER;
-        let maxTime: number = Number.MIN_SAFE_INTEGER;
-        for (const entityConfig of this._config.entities) {
-            const entityIndex: number = this._config.getEntityConfigIndex(entityConfig);
-            const series: number[][] = this._data[0][entityIndex];
-            minTime = Math.min(minTime, series[0][0]);
-            maxTime = Math.max(minTime, series[series.length - 1][0]);
-        }
-        return new Pair<number, number>(minTime, maxTime);
+        return this._data.getCurrentTimeRange();
     }
 
     private getDisplayedTimeRange(): Pair<number, number> {
