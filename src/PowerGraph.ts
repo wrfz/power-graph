@@ -378,10 +378,10 @@ class PowerGraph extends HTMLElement {
             const timeRange: Pair<number, number> = this._data.getTimeRange();
 
             if (startInPercent == 0) {
-                const endDate: Date = new Date(timeRange.v1 - 1);
+                const endDate: Date = new Date(timeRange.first - 1);
                 this._range = new TimeRange(subHours(endDate, 24), endDate);
             } else {
-                this._range = new TimeRange(new Date(timeRange.v2), new Date());
+                this._range = new TimeRange(new Date(timeRange.second), new Date());
             }
         }
 
@@ -447,7 +447,7 @@ class PowerGraph extends HTMLElement {
         // console.log("updateOptions");
         const config: GraphConfig = this._config;
         const displayedTimeRange: Pair<number, number> = this.getDisplayedTimeRange();
-        const displayedTimeRangeNumber: number = displayedTimeRange.v2 - displayedTimeRange.v1;
+        const displayedTimeRangeNumber: number = displayedTimeRange.second - displayedTimeRange.first;
         // console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + (displayedTimeRangeNumber / 1000 / 60 / 60));
         this._currentSeriesQualityIndex = (displayedTimeRangeNumber > (3 * 24 * 60 * 60 * 1000)) ? 1 : 0;
 
@@ -536,8 +536,8 @@ class PowerGraph extends HTMLElement {
         const endInPercent = dataZoom[0].end;
 
         return new Pair<number, number>(
-            timeRange.v1 + (timeRange.v2 - timeRange.v1) * startInPercent / 100,
-            timeRange.v1 + (timeRange.v2 - timeRange.v1) * endInPercent / 100
+            timeRange.first + (timeRange.second - timeRange.first) * startInPercent / 100,
+            timeRange.first + (timeRange.second - timeRange.first) * endInPercent / 100
         );
     }
 

@@ -2,11 +2,11 @@ import { GraphConfig } from "./GraphConfig";
 import { simplify } from './simplify';
 
 export class Pair<T1, T2> {
-    v1: T1;
-    v2: T2;
-    constructor(v1: T1, v2: T2) {
-        this.v1 = v1;
-        this.v2 = v2;
+    first: T1;
+    second: T2;
+    constructor(first: T1, second: T2) {
+        this.first = first;
+        this.second = second;
     }
 };
 
@@ -29,11 +29,11 @@ class DataBlock {
         return this._data;
     }
 
-    setData(data: number[][]) {
+    setData(data: number[][]): void {
         this._data = data;
     }
 
-    add(data: number[][]) {
+    add(data: number[][]): void {
         const isUnshift: boolean = data.length > 0 && this._data.length > 0 && data[0][0] < this._data[0][0];
 
         if (isUnshift) {
@@ -69,7 +69,7 @@ class EntityData {
         return dataBlock.getData();
     }
 
-    add(data: number[][]) {
+    add(data: number[][]): void {
         const dataBlock: DataBlock = this._dataBlock[0];
         dataBlock.add(data);
 
@@ -98,7 +98,7 @@ export class GraphData {
         this._entityData = [];
     }
 
-    setQualities(qualities: number[]) {
+    setQualities(qualities: number[]): void {
         this._qualities = qualities;
     }
 
@@ -116,7 +116,7 @@ export class GraphData {
         return entityData.getData(entityQualityIndex);
     }
 
-    add(entityIndex: number, data: number[][]) {
+    add(entityIndex: number, data: number[][]): void {
         while ((this._entityData.length - 1) < entityIndex) {
             this._entityData.push(new EntityData(this));
         }
@@ -130,8 +130,8 @@ export class GraphData {
         let maxTime: number = Number.MIN_SAFE_INTEGER;
         for (const entityData of this._entityData) {
             const pair = entityData.getTimeRange();
-            minTime = Math.min(minTime, pair.v1);
-            maxTime = Math.max(minTime, pair.v2);
+            minTime = Math.min(minTime, pair.first);
+            maxTime = Math.max(minTime, pair.second);
         }
 
         return new Pair<number, number>(minTime, maxTime);

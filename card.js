@@ -763,9 +763,9 @@ function $0de2eca6fadd5daa$export$798b53621063651(points, tolerance, highestQual
 
 
 class $602c9115d317b38e$export$d63d7cff08fe4dc9 {
-    constructor(v1, v2){
-        this.v1 = v1;
-        this.v2 = v2;
+    constructor(first, second){
+        this.first = first;
+        this.second = second;
     }
 }
 class $602c9115d317b38e$var$DataBlock {
@@ -852,8 +852,8 @@ class $602c9115d317b38e$export$804ce8cdc3ef0047 {
         let maxTime = Number.MIN_SAFE_INTEGER;
         for (const entityData of this._entityData){
             const pair = entityData.getTimeRange();
-            minTime = Math.min(minTime, pair.v1);
-            maxTime = Math.max(minTime, pair.v2);
+            minTime = Math.min(minTime, pair.first);
+            maxTime = Math.max(minTime, pair.second);
         }
         return new $602c9115d317b38e$export$d63d7cff08fe4dc9(minTime, maxTime);
     }
@@ -60149,9 +60149,9 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             const startInPercent = dataZoom[0].start;
             const timeRange = this._data.getTimeRange();
             if (startInPercent == 0) {
-                const endDate = new Date(timeRange.v1 - 1);
+                const endDate = new Date(timeRange.first - 1);
                 this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(endDate, 24), endDate);
-            } else this._range = new $1de2f2772a630298$var$TimeRange(new Date(timeRange.v2), new Date());
+            } else this._range = new $1de2f2772a630298$var$TimeRange(new Date(timeRange.second), new Date());
         }
         // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
         // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
@@ -60200,7 +60200,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         // console.log("updateOptions");
         const config = this._config;
         const displayedTimeRange = this.getDisplayedTimeRange();
-        const displayedTimeRangeNumber = displayedTimeRange.v2 - displayedTimeRange.v1;
+        const displayedTimeRangeNumber = displayedTimeRange.second - displayedTimeRange.first;
         // console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + (displayedTimeRangeNumber / 1000 / 60 / 60));
         this._currentSeriesQualityIndex = displayedTimeRangeNumber > 259200000 ? 1 : 0;
         let points = 0;
@@ -60280,7 +60280,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         const dataZoom = option.dataZoom;
         const startInPercent = dataZoom[0].start;
         const endInPercent = dataZoom[0].end;
-        return new (0, $602c9115d317b38e$export$d63d7cff08fe4dc9)(timeRange.v1 + (timeRange.v2 - timeRange.v1) * startInPercent / 100, timeRange.v1 + (timeRange.v2 - timeRange.v1) * endInPercent / 100);
+        return new (0, $602c9115d317b38e$export$d63d7cff08fe4dc9)(timeRange.first + (timeRange.second - timeRange.first) * startInPercent / 100, timeRange.first + (timeRange.second - timeRange.first) * endInPercent / 100);
     }
     loaderFailed(error) {
         console.log("Database request failure");
