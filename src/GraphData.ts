@@ -38,10 +38,10 @@ class DataBlock {
 
         if (isUnshift) {
             this._data.unshift(...data);
-            console.log("unshift: " + data);
+            // console.log("unshift: " + data);
         } else {
             this._data.push(...data);
-            console.log("push: " + data);
+            // console.log("push: " + data);
         }
     }
 
@@ -84,7 +84,7 @@ class EntityData {
         }
     }
 
-    getCurrentTimeRange(): Pair<number, number> {
+    getTimeRange(): Pair<number, number> {
         const dataBlock: DataBlock = this._dataBlock[0];
         return dataBlock.getTimeRange();
     }
@@ -125,11 +125,11 @@ export class GraphData {
         entityData.add(data);
     }
 
-    getCurrentTimeRange(): Pair<number, number> {
+    getTimeRange(): Pair<number, number> {
         let minTime: number = Number.MAX_SAFE_INTEGER;
         let maxTime: number = Number.MIN_SAFE_INTEGER;
         for (const entityData of this._entityData) {
-            const pair = entityData.getCurrentTimeRange();
+            const pair = entityData.getTimeRange();
             minTime = Math.min(minTime, pair.v1);
             maxTime = Math.max(minTime, pair.v2);
         }

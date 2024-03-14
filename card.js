@@ -774,13 +774,8 @@ class $602c9115d317b38e$var$DataBlock {
     }
     add(data) {
         const isUnshift = data.length > 0 && this._data.length > 0 && data[0][0] < this._data[0][0];
-        if (isUnshift) {
-            this._data.unshift(...data);
-            console.log("unshift: " + data);
-        } else {
-            this._data.push(...data);
-            console.log("push: " + data);
-        }
+        if (isUnshift) this._data.unshift(...data);
+        else this._data.push(...data);
     }
     simplify(quality) {
         return (0, $0de2eca6fadd5daa$export$798b53621063651)(this._data, quality, true);
@@ -812,7 +807,7 @@ class $602c9115d317b38e$var$EntityData {
             this._dataBlock[index].setData(sampledData);
         }
     }
-    getCurrentTimeRange() {
+    getTimeRange() {
         const dataBlock = this._dataBlock[0];
         return dataBlock.getTimeRange();
     }
@@ -840,11 +835,11 @@ class $602c9115d317b38e$export$804ce8cdc3ef0047 {
         const entityData = this._entityData[entityIndex];
         entityData.add(data);
     }
-    getCurrentTimeRange() {
+    getTimeRange() {
         let minTime = Number.MAX_SAFE_INTEGER;
         let maxTime = Number.MIN_SAFE_INTEGER;
         for (const entityData of this._entityData){
-            const pair = entityData.getCurrentTimeRange();
+            const pair = entityData.getTimeRange();
             minTime = Math.min(minTime, pair.v1);
             maxTime = Math.max(minTime, pair.v2);
         }
@@ -56649,470 +56644,6 @@ function $7ce331b4a9eb09e9$export$4b3e715f166fdd78(registers) {
 * KIND, either express or implied.  See the License for the
 * specific language governing permissions and limitations
 * under the License.
-*/ /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/ /**
- * AUTO-GENERATED FILE. DO NOT MODIFY.
- */ /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/ /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/ /**
- * AUTO-GENERATED FILE. DO NOT MODIFY.
- */ /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/ 
-
-
-var $29aa1a3e13c35a6d$var$RELATIONAL_EXPRESSION_OP_ALIAS_MAP = {
-    value: "eq",
-    // PENDING: not good for literal semantic?
-    "<": "lt",
-    "<=": "lte",
-    ">": "gt",
-    ">=": "gte",
-    "=": "eq",
-    "!=": "ne",
-    "<>": "ne"
-};
-// type RelationalExpressionOpEvaluate = (tarVal: unknown, condVal: unknown) => boolean;
-var $29aa1a3e13c35a6d$var$RegExpEvaluator = /** @class */ function() {
-    function RegExpEvaluator(rVal) {
-        // Support condVal: RegExp | string
-        var condValue = this._condVal = (0, $6769291029d9c7f0$export$844ec244b1367d54)(rVal) ? new RegExp(rVal) : (0, $6769291029d9c7f0$export$49841c62b9eff15)(rVal) ? rVal : null;
-        if (condValue == null) {
-            var errMsg = "";
-            errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)("Illegal regexp", rVal, "in");
-            (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-        }
-    }
-    RegExpEvaluator.prototype.evaluate = function(lVal) {
-        var type = typeof lVal;
-        return (0, $6769291029d9c7f0$export$844ec244b1367d54)(type) ? this._condVal.test(lVal) : (0, $6769291029d9c7f0$export$7e4aa119212bc614)(type) ? this._condVal.test(lVal + "") : false;
-    };
-    return RegExpEvaluator;
-}();
-var $29aa1a3e13c35a6d$var$ConstConditionInternal = /** @class */ function() {
-    function ConstConditionInternal() {}
-    ConstConditionInternal.prototype.evaluate = function() {
-        return this.value;
-    };
-    return ConstConditionInternal;
-}();
-var $29aa1a3e13c35a6d$var$AndConditionInternal = /** @class */ function() {
-    function AndConditionInternal() {}
-    AndConditionInternal.prototype.evaluate = function() {
-        var children = this.children;
-        for(var i = 0; i < children.length; i++){
-            if (!children[i].evaluate()) return false;
-        }
-        return true;
-    };
-    return AndConditionInternal;
-}();
-var $29aa1a3e13c35a6d$var$OrConditionInternal = /** @class */ function() {
-    function OrConditionInternal() {}
-    OrConditionInternal.prototype.evaluate = function() {
-        var children = this.children;
-        for(var i = 0; i < children.length; i++){
-            if (children[i].evaluate()) return true;
-        }
-        return false;
-    };
-    return OrConditionInternal;
-}();
-var $29aa1a3e13c35a6d$var$NotConditionInternal = /** @class */ function() {
-    function NotConditionInternal() {}
-    NotConditionInternal.prototype.evaluate = function() {
-        return !this.child.evaluate();
-    };
-    return NotConditionInternal;
-}();
-var $29aa1a3e13c35a6d$var$RelationalConditionInternal = /** @class */ function() {
-    function RelationalConditionInternal() {}
-    RelationalConditionInternal.prototype.evaluate = function() {
-        var needParse = !!this.valueParser;
-        // Call getValue with no `this`.
-        var getValue = this.getValue;
-        var tarValRaw = getValue(this.valueGetterParam);
-        var tarValParsed = needParse ? this.valueParser(tarValRaw) : null;
-        // Relational cond follow "and" logic internally.
-        for(var i = 0; i < this.subCondList.length; i++){
-            if (!this.subCondList[i].evaluate(needParse ? tarValParsed : tarValRaw)) return false;
-        }
-        return true;
-    };
-    return RelationalConditionInternal;
-}();
-function $29aa1a3e13c35a6d$var$parseOption(exprOption, getters) {
-    if (exprOption === true || exprOption === false) {
-        var cond = new $29aa1a3e13c35a6d$var$ConstConditionInternal();
-        cond.value = exprOption;
-        return cond;
-    }
-    var errMsg = "";
-    if (!$29aa1a3e13c35a6d$var$isObjectNotArray(exprOption)) {
-        errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)("Illegal config. Expect a plain object but actually", exprOption);
-        (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-    }
-    if (exprOption.and) return $29aa1a3e13c35a6d$var$parseAndOrOption("and", exprOption, getters);
-    else if (exprOption.or) return $29aa1a3e13c35a6d$var$parseAndOrOption("or", exprOption, getters);
-    else if (exprOption.not) return $29aa1a3e13c35a6d$var$parseNotOption(exprOption, getters);
-    return $29aa1a3e13c35a6d$var$parseRelationalOption(exprOption, getters);
-}
-function $29aa1a3e13c35a6d$var$parseAndOrOption(op, exprOption, getters) {
-    var subOptionArr = exprOption[op];
-    var errMsg = "";
-    errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)('"and"/"or" condition should only be `' + op + ": [...]` and must not be empty array.", "Illegal condition:", exprOption);
-    if (!(0, $6769291029d9c7f0$export$43bee75e5e14138e)(subOptionArr)) (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-    if (!subOptionArr.length) (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-    var cond = op === "and" ? new $29aa1a3e13c35a6d$var$AndConditionInternal() : new $29aa1a3e13c35a6d$var$OrConditionInternal();
-    cond.children = (0, $6769291029d9c7f0$export$871de8747c9eaa88)(subOptionArr, function(subOption) {
-        return $29aa1a3e13c35a6d$var$parseOption(subOption, getters);
-    });
-    if (!cond.children.length) (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-    return cond;
-}
-function $29aa1a3e13c35a6d$var$parseNotOption(exprOption, getters) {
-    var subOption = exprOption.not;
-    var errMsg = "";
-    errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)('"not" condition should only be `not: {}`.', "Illegal condition:", exprOption);
-    if (!$29aa1a3e13c35a6d$var$isObjectNotArray(subOption)) (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-    var cond = new $29aa1a3e13c35a6d$var$NotConditionInternal();
-    cond.child = $29aa1a3e13c35a6d$var$parseOption(subOption, getters);
-    if (!cond.child) (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-    return cond;
-}
-function $29aa1a3e13c35a6d$var$parseRelationalOption(exprOption, getters) {
-    var errMsg = "";
-    var valueGetterParam = getters.prepareGetValue(exprOption);
-    var subCondList = [];
-    var exprKeys = (0, $6769291029d9c7f0$export$ed97f33186d4b816)(exprOption);
-    var parserName = exprOption.parser;
-    var valueParser = parserName ? (0, $e9fc7f7d039f76ab$export$c88237b7c265b36b)(parserName) : null;
-    for(var i = 0; i < exprKeys.length; i++){
-        var keyRaw = exprKeys[i];
-        if (keyRaw === "parser" || getters.valueGetterAttrMap.get(keyRaw)) continue;
-        var op = (0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)($29aa1a3e13c35a6d$var$RELATIONAL_EXPRESSION_OP_ALIAS_MAP, keyRaw) ? $29aa1a3e13c35a6d$var$RELATIONAL_EXPRESSION_OP_ALIAS_MAP[keyRaw] : keyRaw;
-        var condValueRaw = exprOption[keyRaw];
-        var condValueParsed = valueParser ? valueParser(condValueRaw) : condValueRaw;
-        var evaluator = (0, $e9fc7f7d039f76ab$export$f2644c3485f94c4e)(op, condValueParsed) || op === "reg" && new $29aa1a3e13c35a6d$var$RegExpEvaluator(condValueParsed);
-        if (!evaluator) {
-            errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)('Illegal relational operation: "' + keyRaw + '" in condition:', exprOption);
-            (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-        }
-        subCondList.push(evaluator);
-    }
-    if (!subCondList.length) {
-        errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)("Relational condition must have at least one operator.", "Illegal condition:", exprOption);
-        // No relational operator always disabled in case of dangers result.
-        (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-    }
-    var cond = new $29aa1a3e13c35a6d$var$RelationalConditionInternal();
-    cond.valueGetterParam = valueGetterParam;
-    cond.valueParser = valueParser;
-    cond.getValue = getters.getValue;
-    cond.subCondList = subCondList;
-    return cond;
-}
-function $29aa1a3e13c35a6d$var$isObjectNotArray(val) {
-    return (0, $6769291029d9c7f0$export$a6cdc56e425d0d0a)(val) && !(0, $6769291029d9c7f0$export$1e2f57719e155213)(val);
-}
-var $29aa1a3e13c35a6d$var$ConditionalExpressionParsed = /** @class */ function() {
-    function ConditionalExpressionParsed(exprOption, getters) {
-        this._cond = $29aa1a3e13c35a6d$var$parseOption(exprOption, getters);
-    }
-    ConditionalExpressionParsed.prototype.evaluate = function() {
-        return this._cond.evaluate();
-    };
-    return ConditionalExpressionParsed;
-}();
-function $29aa1a3e13c35a6d$export$cd61647d82cec762(exprOption, getters) {
-    return new $29aa1a3e13c35a6d$var$ConditionalExpressionParsed(exprOption, getters);
-}
-
-
-
-
-var $13bc8ae585393c16$export$dc15474d94cdc2b3 = {
-    type: "echarts:filter",
-    // PENDING: enhance to filter by index rather than create new data
-    transform: function(params) {
-        // [Caveat] Fail-Fast:
-        // Do not return the whole dataset unless user config indicates it explicitly.
-        // For example, if no condition is specified by mistake, returning an empty result
-        // is better than returning the entire raw source for the user to find the mistake.
-        var upstream = params.upstream;
-        var rawItem;
-        var condition = (0, $29aa1a3e13c35a6d$export$cd61647d82cec762)(params.config, {
-            valueGetterAttrMap: (0, $6769291029d9c7f0$export$55f8aa7ef875b0a4)({
-                dimension: true
-            }),
-            prepareGetValue: function(exprOption) {
-                var errMsg = "";
-                var dimLoose = exprOption.dimension;
-                if (!(0, $6769291029d9c7f0$export$b5a638e9b3fff9f3)(exprOption, "dimension")) {
-                    errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)('Relation condition must has prop "dimension" specified.', "Illegal condition:", exprOption);
-                    (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-                }
-                var dimInfo = upstream.getDimensionInfo(dimLoose);
-                if (!dimInfo) {
-                    errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)("Can not find dimension info via: " + dimLoose + ".\n", "Existing dimensions: ", upstream.cloneAllDimensionInfo(), ".\n", "Illegal condition:", exprOption, ".\n");
-                    (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-                }
-                return {
-                    dimIdx: dimInfo.index
-                };
-            },
-            getValue: function(param) {
-                return upstream.retrieveValueFromItem(rawItem, param.dimIdx);
-            }
-        });
-        var resultData = [];
-        for(var i = 0, len = upstream.count(); i < len; i++){
-            rawItem = upstream.getRawDataItem(i);
-            if (condition.evaluate()) resultData.push(rawItem);
-        }
-        return {
-            data: resultData
-        };
-    }
-};
-
-
-/*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/ /**
- * AUTO-GENERATED FILE. DO NOT MODIFY.
- */ /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/ 
-
-
-
-
-var $df446d5ceeca956a$var$sampleLog = "";
-$df446d5ceeca956a$var$sampleLog = [
-    "Valid config is like:",
-    '{ dimension: "age", order: "asc" }',
-    'or [{ dimension: "age", order: "asc"], { dimension: "date", order: "desc" }]'
-].join(" ");
-var $df446d5ceeca956a$export$505f1bb66427eaee = {
-    type: "echarts:sort",
-    transform: function(params) {
-        var upstream = params.upstream;
-        var config = params.config;
-        var errMsg = "";
-        // Normalize
-        // const orderExprList: OrderExpression[] = isArray(config[0])
-        //     ? config as OrderExpression[]
-        //     : [config as OrderExpression];
-        var orderExprList = (0, $ae51978b3407899c$export$4f07b212a02c8051)(config);
-        if (!orderExprList.length) {
-            errMsg = "Empty `config` in sort transform.";
-            (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-        }
-        var orderDefList = [];
-        (0, $6769291029d9c7f0$export$79b2f7037acddd43)(orderExprList, function(orderExpr) {
-            var dimLoose = orderExpr.dimension;
-            var order = orderExpr.order;
-            var parserName = orderExpr.parser;
-            var incomparable = orderExpr.incomparable;
-            if (dimLoose == null) {
-                errMsg = 'Sort transform config must has "dimension" specified.' + $df446d5ceeca956a$var$sampleLog;
-                (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-            }
-            if (order !== "asc" && order !== "desc") {
-                errMsg = 'Sort transform config must has "order" specified.' + $df446d5ceeca956a$var$sampleLog;
-                (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-            }
-            if (incomparable && incomparable !== "min" && incomparable !== "max") {
-                var errMsg_1 = "";
-                errMsg_1 = 'incomparable must be "min" or "max" rather than "' + incomparable + '".';
-                (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg_1);
-            }
-            if (order !== "asc" && order !== "desc") {
-                var errMsg_2 = "";
-                errMsg_2 = 'order must be "asc" or "desc" rather than "' + order + '".';
-                (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg_2);
-            }
-            var dimInfo = upstream.getDimensionInfo(dimLoose);
-            if (!dimInfo) {
-                errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)("Can not find dimension info via: " + dimLoose + ".\n", "Existing dimensions: ", upstream.cloneAllDimensionInfo(), ".\n", "Illegal config:", orderExpr, ".\n");
-                (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-            }
-            var parser = parserName ? (0, $e9fc7f7d039f76ab$export$c88237b7c265b36b)(parserName) : null;
-            if (parserName && !parser) {
-                errMsg = (0, $901f0f0d953f8cf5$export$a68bb8b222a6bd43)("Invalid parser name " + parserName + ".\n", "Illegal config:", orderExpr, ".\n");
-                (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-            }
-            orderDefList.push({
-                dimIdx: dimInfo.index,
-                parser: parser,
-                comparator: new (0, $e9fc7f7d039f76ab$export$ed75a5d7b0144167)(order, incomparable)
-            });
-        });
-        // TODO: support it?
-        var sourceFormat = upstream.sourceFormat;
-        if (sourceFormat !== (0, $b19d6d84abd926e7$export$fcd62ebf51387903) && sourceFormat !== (0, $b19d6d84abd926e7$export$703ae8a2d83f441)) {
-            errMsg = 'sourceFormat "' + sourceFormat + '" is not supported yet';
-            (0, $901f0f0d953f8cf5$export$8bf7aba4a9e09055)(errMsg);
-        }
-        // Other upstream format are all array.
-        var resultData = [];
-        for(var i = 0, len = upstream.count(); i < len; i++)resultData.push(upstream.getRawDataItem(i));
-        resultData.sort(function(item0, item1) {
-            for(var i = 0; i < orderDefList.length; i++){
-                var orderDef = orderDefList[i];
-                var val0 = upstream.retrieveValueFromItem(item0, orderDef.dimIdx);
-                var val1 = upstream.retrieveValueFromItem(item1, orderDef.dimIdx);
-                if (orderDef.parser) {
-                    val0 = orderDef.parser(val0);
-                    val1 = orderDef.parser(val1);
-                }
-                var result = orderDef.comparator.evaluate(val0, val1);
-                if (result !== 0) return result;
-            }
-            return 0;
-        });
-        return {
-            data: resultData
-        };
-    }
-};
-
-
-function $bb254542e08bfae5$export$4b3e715f166fdd78(registers) {
-    registers.registerTransform((0, $13bc8ae585393c16$export$dc15474d94cdc2b3));
-    registers.registerTransform((0, $df446d5ceeca956a$export$505f1bb66427eaee));
-}
-
-/*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-*/ /**
- * AUTO-GENERATED FILE. DO NOT MODIFY.
- */ /*
-* Licensed to the Apache Software Foundation (ASF) under one
-* or more contributor license agreements.  See the NOTICE file
-* distributed with this work for additional information
-* regarding copyright ownership.  The ASF licenses this file
-* to you under the Apache License, Version 2.0 (the
-* "License"); you may not use this file except in compliance
-* with the License.  You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
 */ 
 
 
@@ -60340,7 +59871,7 @@ $6c5e1f02b5ec6904$export$1f96ae73734a86cc([
     (0, $7ce331b4a9eb09e9$export$4b3e715f166fdd78),
     (0, $ff8a70300357932d$export$4b3e715f166fdd78),
     (0, $1906130327e11912$export$4b3e715f166fdd78),
-    (0, $bb254542e08bfae5$export$4b3e715f166fdd78),
+    // TransformComponent,
     (0, $38c03db4b5b52721$export$5320d1b3745c02a5),
     (0, $fcac9476ccd13092$export$efd07f28fd73e88c),
     (0, $7dba11b14a95583c$export$4b3e715f166fdd78)
@@ -60363,6 +59894,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this._data = new (0, $602c9115d317b38e$export$804ce8cdc3ef0047)();
         this._currentSeriesQualityIndex = 0;
         this._requestInProgress = false;
+        this._ctrlPressed = false;
         this.createContent();
         //this._range = new PowerGraph.TimeRange(subHours(new Date(), 1 * 24), new Date());
         this._resizeObserver = new (0, $e9848ff2edce194c$export$9caf76241ca21a11)((entries)=>{
@@ -60385,6 +59917,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     }
     createContent() {
         //console.log("createContent");
+        const thisGraph = this;
         this._card = document.createElement("ha-card");
         this._card.setAttribute("id", "chart-container");
         var _style = document.createElement("style");
@@ -60398,6 +59931,33 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             mode: "open"
         });
         this.shadowRoot.append(_style, this._card);
+        window.onkeydown = function(event) {
+            thisGraph.onKeyDown(event);
+        };
+        window.onkeyup = function(event) {
+            thisGraph.onKeyUp(event);
+        };
+    }
+    onKeyDown(event) {
+        if (event.key === "Control") {
+            if (!this._ctrlPressed) {
+                this._ctrlPressed = true;
+                this.handleCtrl();
+            }
+        }
+    }
+    onKeyUp(event) {
+        if (event.key === "Control") {
+            this._ctrlPressed = false;
+            this.handleCtrl();
+        }
+    }
+    handleCtrl() {
+        this._chart.dispatchAction({
+            type: "takeGlobalCursor",
+            key: "dataZoomSelect",
+            dataZoomSelectActive: this._ctrlPressed
+        });
     }
     onScroll(event) {
         //console.log(event);
@@ -60413,7 +59973,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     }
     createChart() {
         console.log("createChart: " + this._config.renderer);
-        let thisGraph = this;
+        const thisGraph = this;
         this._chart = $52bde46803a5e949$export$2cd8252107eb640b(this._card, null, {
             renderer: this._config.renderer
         });
@@ -60425,16 +59985,21 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
         //console.log(startTime, endTime);
-        const size = this._card.clientWidth * this._card.clientWidth;
-        //console.log("size: " + size);
         const smallDevice = this._card.clientWidth * this._card.clientWidth < 300000;
-        let options = {
+        const options = {
             animation: this._config.animation,
             grid: {
                 left: "2%",
                 top: "3%",
                 right: "2%",
                 bottom: "30%"
+            },
+            toolbox: {
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: "none"
+                    }
+                }
             },
             xAxis: {
                 type: "time",
@@ -60499,7 +60064,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 formatter: (params)=>{
                     var xTime = new Date(params[0].axisValue);
                     let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
-                    let chart = this._chart;
+                    const chart = this._chart;
                     const tooltipReducer = (prev, curr)=>{
                         return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
                     };
@@ -60564,21 +60129,14 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             const option = this._chart.getOption();
             const dataZoom = option.dataZoom;
             const startInPercent = dataZoom[0].start;
+            const timeRange = this._data.getTimeRange();
             if (startInPercent == 0) {
-                console.log("request past data");
-                const timeRange = this._data.getCurrentTimeRange();
                 const endDate = new Date(timeRange.v1 - 1);
                 this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(endDate, 24), endDate);
-            } else {
-                console.log("request new data");
-                this._range.end = new Date();
-                const timeRange = this._data.getCurrentTimeRange();
-                const maxAvailableTime = timeRange.v2;
-                this._range = new $1de2f2772a630298$var$TimeRange(new Date(maxAvailableTime), new Date());
-            }
+            } else this._range = new $1de2f2772a630298$var$TimeRange(new Date(timeRange.v2), new Date());
         }
-        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
-        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
+        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
+        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
         const request = {
             type: "history/history_during_period",
             start_time: this._range.start.toISOString(),
@@ -60592,8 +60150,8 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
     dataResponse(result) {
-        console.log("dataResponse >>");
-        //console.log(result)
+        // console.log("dataResponse >>")
+        // console.log(result)
         const option = this._chart.getOption();
         //console.log("startTime: " + dataZoom[0].startTime);
         const thisCard = this;
@@ -60603,18 +60161,12 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             const entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
             const arr = result[entityId];
-            //console.log("startTime2: " + startTime);
-            //console.log("endTime2: " + endTime);
             const data = [];
-            for(let i = 1; i < arr.length; i++){
-                const time = Math.round(arr[i].lu * 1000);
-                data.push([
-                    time,
-                    +arr[i].s
-                ]);
-            }
-            this._data.add(seriesIndex, data);
-            seriesIndex++;
+            for(let i = 1; i < arr.length; i++)data.push([
+                Math.round(arr[i].lu * 1000),
+                +arr[i].s
+            ]);
+            this._data.add(seriesIndex++, data);
         }
         const options = {
             legend: {
@@ -60627,12 +60179,12 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this._requestInProgress = false;
     }
     updateOptions(options) {
+        // console.log("updateOptions");
         const config = this._config;
         const displayedTimeRange = this.getDisplayedTimeRange();
         const displayedTimeRangeNumber = displayedTimeRange.v2 - displayedTimeRange.v1;
-        console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + displayedTimeRangeNumber / 1000 / 60 / 60);
+        // console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + (displayedTimeRangeNumber / 1000 / 60 / 60));
         this._currentSeriesQualityIndex = displayedTimeRangeNumber > 259200000 ? 1 : 0;
-        console.log("updateOptions: " + this._currentSeriesQualityIndex);
         let points = 0;
         let info = "";
         if (this._config.showInfo) {
@@ -60694,11 +60246,8 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this._chart.setOption(options);
         if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
     }
-    getCurrentTimeRange() {
-        return this._data.getCurrentTimeRange();
-    }
     getDisplayedTimeRange() {
-        const timeRange = this.getCurrentTimeRange();
+        const timeRange = this._data.getTimeRange();
         const option = this._chart.getOption();
         const dataZoom = option.dataZoom;
         const startInPercent = dataZoom[0].start;

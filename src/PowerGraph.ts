@@ -26,7 +26,7 @@ import {
     GridComponent,
     DatasetComponent,
     LegendComponent,
-    TransformComponent,
+    // TransformComponent,
     DataZoomComponent,
 } from 'echarts/components';
 
@@ -53,7 +53,7 @@ echarts.use([
     DataZoomComponent,
     LegendComponent,
     LineChart,
-    TransformComponent,
+    // TransformComponent,
     LabelLayout,
     UniversalTransition,
     CanvasRenderer
@@ -93,12 +93,14 @@ class PowerGraph extends HTMLElement {
     private _requestInProgress: boolean;
     private _data: GraphData;
     private _currentSeriesQualityIndex: number;
+    private _ctrlPressed: boolean;
 
     constructor() {
         super();
         this._data = new GraphData();
         this._currentSeriesQualityIndex = 0;
         this._requestInProgress = false;
+        this._ctrlPressed = false;
 
         this.createContent();
 
@@ -127,6 +129,8 @@ class PowerGraph extends HTMLElement {
     private createContent(): void {
         //console.log("createContent");
 
+        const thisGraph: PowerGraph = this;
+
         this._card = document.createElement("ha-card");
         this._card.setAttribute("id", "chart-container");
 
@@ -140,6 +144,33 @@ class PowerGraph extends HTMLElement {
 
         this.attachShadow({ mode: "open" });
         this.shadowRoot!.append(_style, this._card);
+
+        window.onkeydown = function (event) { thisGraph.onKeyDown(event); }
+        window.onkeyup = function (event) { thisGraph.onKeyUp(event); }
+    }
+
+    private onKeyDown(event) {
+        if (event.key === "Control") {
+            if (!this._ctrlPressed) {
+                this._ctrlPressed = true;
+                this.handleCtrl();
+            }
+        }
+    }
+
+    private onKeyUp(event) {
+        if (event.key === "Control") {
+            this._ctrlPressed = false;
+            this.handleCtrl();
+        }
+    }
+
+    private handleCtrl() {
+        this._chart.dispatchAction({
+            type: "takeGlobalCursor",
+            key: "dataZoomSelect",
+            dataZoomSelectActive: this._ctrlPressed
+        });
     }
 
     private onScroll(event) {
@@ -161,7 +192,7 @@ class PowerGraph extends HTMLElement {
 
     private createChart(): void {
         console.log("createChart: " + this._config.renderer);
-        let thisGraph: PowerGraph = this;
+        const thisGraph: PowerGraph = this;
 
         this._chart = echarts.init(this._card, null, { renderer: this._config.renderer });
         console.log(this);
@@ -172,18 +203,22 @@ class PowerGraph extends HTMLElement {
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
         //console.log(startTime, endTime);
 
-        const size = this._card.clientWidth * this._card.clientWidth;
-        //console.log("size: " + size);
-
         const smallDevice: boolean = this._card.clientWidth * this._card.clientWidth < 300000
 
-        let options = {
+        const options = {
             animation: this._config.animation,
             grid: {
                 left: '2%',
                 top: '3%',
                 right: '2%',
                 bottom: '30%'
+            },
+            toolbox: {
+                feature: {
+                    dataZoom: {
+                        yAxisIndex: 'none'
+                    }
+                }
             },
             xAxis: {
                 type: 'time',
@@ -250,7 +285,7 @@ class PowerGraph extends HTMLElement {
                         var xTime = new Date(params[0].axisValue)
                         let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
 
-                        let chart = this._chart;
+                        const chart = this._chart;
                         const tooltipReducer = (prev, curr) => {
                             return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
                         }
@@ -328,24 +363,18 @@ class PowerGraph extends HTMLElement {
             const option: echarts.EChartsCoreOption = this._chart.getOption();
             const dataZoom: any[] = option.dataZoom as any[];
             const startInPercent = dataZoom[0].start;
+            const timeRange: Pair<number, number> = this._data.getTimeRange();
 
             if (startInPercent == 0) {
-                console.log("request past data");
-                const timeRange: Pair<number, number> = this._data.getCurrentTimeRange();
                 const endDate: Date = new Date(timeRange.v1 - 1);
                 this._range = new TimeRange(subHours(endDate, 24), endDate);
             } else {
-                console.log("request new data");
-                this._range.end = new Date();
-
-                const timeRange: Pair<number, number> = this._data.getCurrentTimeRange();
-                const maxAvailableTime: number = timeRange.v2;
-                this._range = new TimeRange(new Date(maxAvailableTime), new Date());
+                this._range = new TimeRange(new Date(timeRange.v2), new Date());
             }
         }
 
-        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
-        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
+        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
+        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
 
         const request = {
             type: "history/history_during_period",
@@ -362,15 +391,14 @@ class PowerGraph extends HTMLElement {
     }
 
     private dataResponse(result): void {
-        console.log("dataResponse >>")
-        //console.log(result)
+        // console.log("dataResponse >>")
+        // console.log(result)
 
         const option: echarts.EChartsCoreOption = this._chart.getOption();
 
         //console.log("startTime: " + dataZoom[0].startTime);
 
         const thisCard: PowerGraph = this;
-
         const legends: string[] = [];
 
         let seriesIndex = 0;
@@ -379,18 +407,12 @@ class PowerGraph extends HTMLElement {
             legends.push(entity.name || entity.entity)
             const arr: DataItem[] = result[entityId];
 
-            //console.log("startTime2: " + startTime);
-            //console.log("endTime2: " + endTime);
-
             const data: number[][] = [];
             for (let i = 1; i < arr.length; i++) {
-                const time: number = Math.round(arr[i].lu * 1000);
-                data.push([time, +arr[i].s]);
+                data.push([Math.round(arr[i].lu * 1000), +arr[i].s]);
             }
 
-            this._data.add(seriesIndex, data);
-
-            seriesIndex++;
+            this._data.add(seriesIndex++, data);
         }
 
         const options = {
@@ -410,14 +432,12 @@ class PowerGraph extends HTMLElement {
     }
 
     private updateOptions(options: echarts.EChartsCoreOption): void {
-
+        // console.log("updateOptions");
         const config: GraphConfig = this._config;
         const displayedTimeRange: Pair<number, number> = this.getDisplayedTimeRange();
         const displayedTimeRangeNumber: number = displayedTimeRange.v2 - displayedTimeRange.v1;
-        console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + (displayedTimeRangeNumber / 1000 / 60 / 60));
+        // console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + (displayedTimeRangeNumber / 1000 / 60 / 60));
         this._currentSeriesQualityIndex = (displayedTimeRangeNumber > (3 * 24 * 60 * 60 * 1000)) ? 1 : 0;
-
-        console.log("updateOptions: " + this._currentSeriesQualityIndex);
 
         let points = 0;
         let info = "";
@@ -489,12 +509,8 @@ class PowerGraph extends HTMLElement {
         }
     }
 
-    private getCurrentTimeRange(): Pair<number, number> {
-        return this._data.getCurrentTimeRange();
-    }
-
     private getDisplayedTimeRange(): Pair<number, number> {
-        const timeRange: Pair<number, number> = this.getCurrentTimeRange();
+        const timeRange: Pair<number, number> = this._data.getTimeRange();
 
         const option: echarts.EChartsCoreOption = this._chart.getOption();
         const dataZoom: any[] = option.dataZoom as any[];
