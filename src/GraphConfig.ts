@@ -9,13 +9,13 @@ export interface EntityConfig {
 };
 
 export class GraphConfig {
-    type: string | null = null;
-    title: string | null = null;
-    autorefresh: number | null = null;
+    type: string;
+    title: string;
+    autorefresh: number;
     shadow: boolean;
-    entities: EntityConfig[] | null = null;
+    entities: EntityConfig[];
     timRangeInHours: number = 2;
-    start: Date | null = null;
+    start: Date;
     animation: boolean = true;
     showTooltip: boolean = false;
     sampling: boolean = false;
@@ -23,14 +23,14 @@ export class GraphConfig {
     renderer: 'canvas' | 'svg' = 'canvas';
     showInfo: boolean = false;
     logOptions: boolean = false;
-    qualities: number[] | null = null
+    qualities: number[]
 
-    constructor(obj) {
-        for (const key in obj) {
-            if (!this.hasOwnProperty(key)) {
-                throw new Error('Unsupported key: ' + key);
-            }
-        }
+    constructor(obj: any) {
+        // for (const key in obj) {
+        //     if (!this.hasOwnProperty(key)) {
+        //         throw new Error('Unsupported key: ' + key);
+        //     }
+        // }
 
         obj && Object.assign(this, obj);
     }
@@ -49,6 +49,10 @@ export class GraphConfig {
         if (!this.entities) {
             throw new Error('Please define an entity!');
         }
+    }
+
+    getEntities(): EntityConfig[] {
+        return this.entities;
     }
 
     public getEntityById(entityId: string): EntityConfig {

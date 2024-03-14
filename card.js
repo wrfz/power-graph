@@ -617,12 +617,7 @@ const $58ff2ed505ab3e4f$export$f5c524615a7708d6 = {
 
 class $cc9bf597b1ebde57$export$566c11bd98e80427 {
     constructor(obj){
-        this.type = null;
-        this.title = null;
-        this.autorefresh = null;
-        this.entities = null;
         this.timRangeInHours = 2;
-        this.start = null;
         this.animation = true;
         this.showTooltip = false;
         this.sampling = false;
@@ -630,10 +625,11 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
         this.renderer = "canvas";
         this.showInfo = false;
         this.logOptions = false;
-        this.qualities = null;
-        for(const key in obj){
-            if (!this.hasOwnProperty(key)) throw new Error("Unsupported key: " + key);
-        }
+        // for (const key in obj) {
+        //     if (!this.hasOwnProperty(key)) {
+        //         throw new Error('Unsupported key: ' + key);
+        //     }
+        // }
         obj && Object.assign(this, obj);
     }
     validate() {
@@ -646,6 +642,9 @@ class $cc9bf597b1ebde57$export$566c11bd98e80427 {
         }
         //console.log("start: " + this.start.toString());
         if (!this.entities) throw new Error("Please define an entity!");
+    }
+    getEntities() {
+        return this.entities;
     }
     getEntityById(entityId) {
         for (const entity of this.entities){
@@ -59898,11 +59897,12 @@ class $1de2f2772a630298$var$TimeRange {
 class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
     constructor(){
         super();
+        this._config = null;
         this._elements = {
             card: Element,
             style: Element
         };
-        this._tid = 0;
+        this._tid = null;
         this._series = [];
         this._data = new (0, $602c9115d317b38e$export$804ce8cdc3ef0047)();
         this._currentSeriesQualityIndex = 0;
@@ -59920,12 +59920,11 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         this._config.validate();
         //this._range = new PowerGraph.TimeRange(this._config.start, new Date());
         this._range = new $1de2f2772a630298$var$TimeRange((0, $4bc1678c98a41ad1$export$5e9fa51cd5bb1e71)(new Date(), this._config.timRangeInHours), new Date());
-        console.log(this._range);
         this._data.setQualities(this._config.qualities);
         this.clearRefreshInterval();
     }
     set hass(hass) {
-        //console.log("hass");
+        // console.log(hass);
         this._hass = hass;
     }
     createContent() {
@@ -59981,18 +59980,24 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //localStorage.setItem("dataZoom.endTime", endTime);
         //console.log(dataZoom);
         //console.log(event);
+        // Scroll other charts
+        // var zoom = myChart.getOption().dataZoom[0];
+        // myOtherChart.dispatchAction({
+        //     type: 'dataZoom',
+        //     dataZoomIndex: 0,
+        //     startValue: zoom.startValue,
+        //     endValue: zoom.endValue
+        // });
         if (start === 0) this.requestData();
         else this.updateOptions({});
     }
     createChart() {
-        console.log("createChart: " + this._config.renderer);
+        // console.log("createChart: " + this._config.renderer);
         const thisGraph = this;
         this._chart = $52bde46803a5e949$export$2cd8252107eb640b(this._card, null, {
             renderer: this._config.renderer
         });
-        console.log(this);
-        //let chart: echarts.ECharts = this._chart;
-        this._chart.on("datazoom", function(evt) {
+        this._chart.on("dataZoom", function(evt) {
             thisGraph.onScroll(evt);
         });
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
@@ -60187,7 +60192,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
             }
         };
         this.updateOptions(options);
-        if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == 0) //console.log("setInterval");
+        if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == null) // console.log("setInterval");
         this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
         this._requestInProgress = false;
     }
@@ -60288,19 +60293,11 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         }
         return null;
     }
-    getMaxTime(data) {
-        for(let index = data.length - 1; index >= 0; --index){
-            let time = data[index].lu;
-            if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(time)) //console.log("getMaxTime: " + time);
-            return time;
-        }
-        return null;
-    }
     clearRefreshInterval() {
-        if (this._tid != 0) {
-            //console.log("clearInterval");
-            clearTimeout(this._tid);
-            this._tid = 0;
+        if (this._tid != null) {
+            // console.log("clearInterval");
+            clearInterval(this._tid);
+            this._tid = null;
         }
     }
     resize() {

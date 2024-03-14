@@ -80,13 +80,18 @@ type DataItem = {
     s: number;
 };
 
+declare class HomeAssistant {
+    states: any;
+    callWS(request: any): any;
+};
+
 class PowerGraph extends HTMLElement {
-    private _config: GraphConfig;
-    private _hass;
+    private _config: GraphConfig = null;
+    private _hass: HomeAssistant;
     private _elements = { card: Element, style: Element };
     private _card: HTMLElement;
     private _chart: echarts.EChartsType;
-    private _tid: number = 0;
+    private _tid: ReturnType<typeof setTimeout> = null;
     private _series: any[] = [];
     private _range: TimeRange;
     private _resizeObserver;
@@ -114,15 +119,14 @@ class PowerGraph extends HTMLElement {
         this._config.validate();
         //this._range = new PowerGraph.TimeRange(this._config.start, new Date());
         this._range = new TimeRange(subHours(new Date(), this._config.timRangeInHours), new Date());
-        console.log(this._range);
 
         this._data.setQualities(this._config.qualities);
 
         this.clearRefreshInterval();
     }
 
-    set hass(hass) {
-        //console.log("hass");
+    set hass(hass: HomeAssistant) {
+        // console.log(hass);
         this._hass = hass;
     }
 
@@ -149,7 +153,7 @@ class PowerGraph extends HTMLElement {
         window.onkeyup = function (event) { thisGraph.onKeyUp(event); }
     }
 
-    private onKeyDown(event) {
+    private onKeyDown(event: KeyboardEvent) {
         if (event.key === "Control") {
             if (!this._ctrlPressed) {
                 this._ctrlPressed = true;
@@ -158,7 +162,7 @@ class PowerGraph extends HTMLElement {
         }
     }
 
-    private onKeyUp(event) {
+    private onKeyUp(event: KeyboardEvent) {
         if (event.key === "Control") {
             this._ctrlPressed = false;
             this.handleCtrl();
@@ -173,7 +177,7 @@ class PowerGraph extends HTMLElement {
         });
     }
 
-    private onScroll(event) {
+    private onScroll(event: any) {
         //console.log(event);
         //const option = this._chart.getOption();
         //const dataZoom: any[] = option.dataZoom as any[];
@@ -183,6 +187,16 @@ class PowerGraph extends HTMLElement {
 
         //console.log(dataZoom);
         //console.log(event);
+
+        // Scroll other charts
+        // var zoom = myChart.getOption().dataZoom[0];
+        // myOtherChart.dispatchAction({
+        //     type: 'dataZoom',
+        //     dataZoomIndex: 0,
+        //     startValue: zoom.startValue,
+        //     endValue: zoom.endValue
+        // });
+
         if (start === 0) {
             this.requestData();
         } else {
@@ -191,13 +205,11 @@ class PowerGraph extends HTMLElement {
     }
 
     private createChart(): void {
-        console.log("createChart: " + this._config.renderer);
+        // console.log("createChart: " + this._config.renderer);
         const thisGraph: PowerGraph = this;
 
         this._chart = echarts.init(this._card, null, { renderer: this._config.renderer });
-        console.log(this);
-        //let chart: echarts.ECharts = this._chart;
-        this._chart.on('datazoom', function (evt) { thisGraph.onScroll(evt); });
+        this._chart.on('dataZoom', function (evt) { thisGraph.onScroll(evt); });
 
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
@@ -239,7 +251,7 @@ class PowerGraph extends HTMLElement {
                 }
             },
             legend: {
-                formatter: function (name) {
+                formatter: function (name: string): string {
                     const entityConfig: EntityConfig = thisGraph._config.getEntityByName(name);
                     const entityIndex: number = thisGraph._config.getEntityConfigIndex(entityConfig);
                     const series: number[][] = thisGraph._data.getData(entityIndex, thisGraph._currentSeriesQualityIndex);
@@ -281,16 +293,16 @@ class PowerGraph extends HTMLElement {
                     axisPointer: {
                         type: 'cross'
                     },
-                    formatter: (params) => {
+                    formatter: (params: any[]) => {
                         var xTime = new Date(params[0].axisValue)
                         let tooltip = `<p>${xTime.toLocaleString()}</p><table>`;
 
                         const chart = this._chart;
-                        const tooltipReducer = (prev, curr) => {
+                        const tooltipReducer = (prev: number[], curr: number[]) => {
                             return Math.abs(new Date(curr[0]).valueOf() - xTime.valueOf()) < Math.abs(new Date(prev[0]).valueOf() - xTime.valueOf()) ? curr : prev;
                         }
 
-                        this._series.forEach((serie, index) => {
+                        this._series.forEach((serie: any, index: number) => {
                             const color: CSSResult = unsafeCSS(chart.getVisual({ seriesIndex: index }, 'color'));
                             const style: CSSResult = css`
                                 display: inline-block;
@@ -390,7 +402,7 @@ class PowerGraph extends HTMLElement {
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
     }
 
-    private dataResponse(result): void {
+    private dataResponse(result: any): void {
         // console.log("dataResponse >>")
         // console.log(result)
 
@@ -423,8 +435,8 @@ class PowerGraph extends HTMLElement {
 
         this.updateOptions(options);
 
-        if (isNumber(this._config.autorefresh) && this._tid == 0) {
-            //console.log("setInterval");
+        if (isNumber(this._config.autorefresh) && this._tid == null) {
+            // console.log("setInterval");
             this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
         }
 
@@ -456,7 +468,7 @@ class PowerGraph extends HTMLElement {
             points += seriesLength;
             info += `   ${entityConfig.entity}: ${seriesLength} \n`;
 
-            const line = {
+            const line: any = {
                 name: entityConfig.name || entityConfig.entity,
                 type: 'line',
                 smooth: false,
@@ -529,7 +541,7 @@ class PowerGraph extends HTMLElement {
         );
     }
 
-    private loaderFailed(error): void {
+    private loaderFailed(error: string): void {
         console.log("Database request failure");
         console.log(error);
     }
@@ -544,22 +556,11 @@ class PowerGraph extends HTMLElement {
         return null;
     }
 
-    private getMaxTime(data: DataItem[]): number | null {
-        for (let index = data.length - 1; index >= 0; --index) {
-            let time: number = data[index].lu;
-            if (isNumber(time)) {
-                //console.log("getMaxTime: " + time);
-                return time;
-            }
-        }
-        return null;
-    }
-
     private clearRefreshInterval(): void {
-        if (this._tid != 0) {
-            //console.log("clearInterval");
-            clearTimeout(this._tid);
-            this._tid = 0;
+        if (this._tid != null) {
+            // console.log("clearInterval");
+            clearInterval(this._tid);
+            this._tid = null;
         }
     }
 
@@ -598,19 +599,19 @@ class PowerGraph extends HTMLElement {
         }
     }
 
-    private sleep(ms): Promise<number> {
+    private sleep(ms: number): Promise<number> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    private getDeviceClass(entityId): string {
+    private getDeviceClass(entityId: string): string {
         return this._hass.states[entityId]?.attributes?.device_class;
     }
 
-    private getUnitOfMeasurement(entityId): string {
+    private getUnitOfMeasurement(entityId: string): string {
         return this._hass.states[entityId]?.attributes?.unit_of_measurement;
     }
 
-    private getStateClass(entityId): string {
+    private getStateClass(entityId: string): string {
         return this._hass.states[entityId]?.attributes?.state_class;
     }
 
