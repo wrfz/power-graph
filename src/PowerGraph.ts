@@ -546,16 +546,6 @@ class PowerGraph extends HTMLElement {
         console.log(error);
     }
 
-    private getMinTime(data: DataItem[]): number | null {
-        for (let index = 0; index < data.length; ++index) {
-            let time: number = data[index].lu;
-            if (isNumber(time)) {
-                return time;
-            }
-        }
-        return null;
-    }
-
     private clearRefreshInterval(): void {
         if (this._tid != null) {
             // console.log("clearInterval");

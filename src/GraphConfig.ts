@@ -35,7 +35,7 @@ export class GraphConfig {
         obj && Object.assign(this, obj);
     }
 
-    public validate() {
+    public validate(): void {
         try {
             if (this.start == null || this.start === undefined) {
                 throw new Error();

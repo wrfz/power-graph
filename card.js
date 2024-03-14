@@ -60286,13 +60286,6 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         console.log("Database request failure");
         console.log(error);
     }
-    getMinTime(data) {
-        for(let index = 0; index < data.length; ++index){
-            let time = data[index].lu;
-            if ((0, $4bc1678c98a41ad1$export$7e4aa119212bc614)(time)) return time;
-        }
-        return null;
-    }
     clearRefreshInterval() {
         if (this._tid != null) {
             // console.log("clearInterval");
