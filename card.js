@@ -617,15 +617,28 @@ const $58ff2ed505ab3e4f$export$f5c524615a7708d6 = {
 
 class $cc9bf597b1ebde57$export$566c11bd98e80427 {
     constructor(obj){
-        this.animation = true;
-        this.renderer = "canvas";
-        this.sampling = false;
+        this.type = null;
+        this.title = null;
+        this.autorefresh = null;
+        this.entities = null;
         this.timRangeInHours = 2;
+        this.start = null;
+        this.animation = true;
+        this.showTooltip = false;
+        this.sampling = false;
+        this.fillAread = false;
+        this.renderer = "canvas";
+        this.showInfo = false;
+        this.logOptions = false;
+        this.qualities = null;
+        for(const key in obj){
+            if (!this.hasOwnProperty(key)) throw new Error("Unsupported key: " + key);
+        }
         obj && Object.assign(this, obj);
     }
     validate() {
         try {
-            if (this.start === undefined) throw new Error();
+            if (this.start == null || this.start === undefined) throw new Error();
             this.start = new Date(this.start);
         } catch (err) {
             this.start = new Date(new Date());
@@ -60156,7 +60169,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
         //console.log("startTime: " + dataZoom[0].startTime);
         const thisCard = this;
         const legends = [];
-        let seriesIndex = 0;
+        let entityIndex = 0;
         for(const entityId in result){
             const entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
@@ -60166,7 +60179,7 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 Math.round(arr[i].lu * 1000),
                 +arr[i].s
             ]);
-            this._data.add(seriesIndex++, data);
+            this._data.add(entityIndex++, data);
         }
         const options = {
             legend: {
@@ -60213,6 +60226,16 @@ class $1de2f2772a630298$var$PowerGraph extends HTMLElement {
                 step: "end",
                 data: series
             };
+            if (entityConfig.color) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
+                lineStyle: {
+                    color: entityConfig.color
+                }
+            });
+            if (entityConfig.fillColor) (0, $4bc1678c98a41ad1$export$dd702b3c8240390c)(line, {
+                areaStyle: {
+                    color: entityConfig.fillColor
+                }
+            });
             if (this._config.shadow || entityConfig.shadow) Object.assign(line, {
                 lineStyle: {
                     width: 3,

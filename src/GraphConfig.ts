@@ -4,35 +4,40 @@ export interface EntityConfig {
     entity: string;
     name: string;
     shadow: boolean;
+    color: string;
+    fillColor: string;
 };
 
 export class GraphConfig {
-    title: string;
-    autorefresh: string;
+    type: string | null = null;
+    title: string | null = null;
+    autorefresh: number | null = null;
     shadow: boolean;
-    entities: EntityConfig[];
-    timRangeInHours: number;
-    start: Date;
-    animation: boolean;
-    showTooltip: boolean;
-    sampling: boolean;
-    fillAread: boolean;
-    renderer: 'canvas' | 'svg';
-    showInfo: boolean;
-    logOptions: boolean;
-    qualities: number[]
+    entities: EntityConfig[] | null = null;
+    timRangeInHours: number = 2;
+    start: Date | null = null;
+    animation: boolean = true;
+    showTooltip: boolean = false;
+    sampling: boolean = false;
+    fillAread: boolean = false;
+    renderer: 'canvas' | 'svg' = 'canvas';
+    showInfo: boolean = false;
+    logOptions: boolean = false;
+    qualities: number[] | null = null
 
     constructor(obj) {
-        this.animation = true;
-        this.renderer = 'canvas';
-        this.sampling = false;
-        this.timRangeInHours = 2;
+        for (const key in obj) {
+            if (!this.hasOwnProperty(key)) {
+                throw new Error('Unsupported key: ' + key);
+            }
+        }
+
         obj && Object.assign(this, obj);
     }
 
     public validate() {
         try {
-            if (this.start === undefined) {
+            if (this.start == null || this.start === undefined) {
                 throw new Error();
             }
             this.start = new Date(this.start);

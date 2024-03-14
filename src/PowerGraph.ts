@@ -401,7 +401,7 @@ class PowerGraph extends HTMLElement {
         const thisCard: PowerGraph = this;
         const legends: string[] = [];
 
-        let seriesIndex = 0;
+        let entityIndex = 0;
         for (const entityId in result) {
             const entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
@@ -412,7 +412,7 @@ class PowerGraph extends HTMLElement {
                 data.push([Math.round(arr[i].lu * 1000), +arr[i].s]);
             }
 
-            this._data.add(seriesIndex++, data);
+            this._data.add(entityIndex++, data);
         }
 
         const options = {
@@ -468,6 +468,12 @@ class PowerGraph extends HTMLElement {
                 step: 'end',
                 data: series
             };
+            if (entityConfig.color) {
+                mergeDeep(line, { lineStyle: { color: entityConfig.color } });
+            }
+            if (entityConfig.fillColor) {
+                mergeDeep(line, { areaStyle: { color: entityConfig.fillColor } });
+            }
             if (this._config.shadow || entityConfig.shadow) {
                 Object.assign(line, {
                     lineStyle: {
