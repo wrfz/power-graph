@@ -11,7 +11,7 @@ import {
 
 import { GraphConfig, EntityConfig } from './GraphConfig';
 import { Pair, GraphData } from './GraphData'
-import { mergeDeep, isNumber, toNumber, subHours } from './utils';
+import { mergeDeep, isNumber, toNumber } from './utils';
 
 import * as echarts from 'echarts/core';
 
@@ -38,6 +38,7 @@ import { LabelLayout, UniversalTransition } from 'echarts/features';
 // Note that including the CanvasRenderer or SVGRenderer is a required step
 import { CanvasRenderer } from 'echarts/renderers';
 
+import { DateTime, Duration } from "luxon";
 import { ResizeObserver } from "@juggle/resize-observer";
 
 
@@ -66,10 +67,10 @@ declare global {
 }
 
 class TimeRange {
-    start: Date;
-    end: Date;
+    start: DateTime;
+    end: DateTime;
 
-    constructor(start: Date, end: Date) {
+    constructor(start: DateTime, end: DateTime) {
         this.start = start;
         this.end = end;
     }
@@ -108,8 +109,6 @@ class PowerGraph extends HTMLElement {
         this._ctrlPressed = false;
 
         this.createContent();
-
-        //this._range = new PowerGraph.TimeRange(subHours(new Date(), 1 * 24), new Date());
         this._resizeObserver = new ResizeObserver(entries => { this.resize(); });
     }
 
@@ -117,8 +116,7 @@ class PowerGraph extends HTMLElement {
         //console.log("setConfig");
         this._config = new GraphConfig(config);
         this._config.validate();
-        //this._range = new PowerGraph.TimeRange(this._config.start, new Date());
-        this._range = new TimeRange(subHours(new Date(), this._config.timRangeInHours), new Date());
+        this._range = new TimeRange(DateTime.local().minus({ hours: this._config.timRangeInHours }), DateTime.local());
 
         this._data.setQualities(this._config.qualities);
 
@@ -263,15 +261,15 @@ class PowerGraph extends HTMLElement {
                 {
                     type: 'inside',
                     // rangeMode: ['value', 'value'],
-                    startValue: this._range.start.getTime(),
-                    endValue: this._range.end.getTime(),
+                    startValue: this._range.start.toUnixInteger() * 1000,
+                    endValue: this._range.end.toUnixInteger() * 1000,
                     preventDefaultMouseMove: false
                 },
                 {
                     type: 'slider',
                     // rangeMode: ['value', 'value'],
-                    startValue: this._range.start.getTime(),
-                    endValue: this._range.end.getTime(),
+                    startValue: this._range.start.toUnixInteger() * 1000,
+                    endValue: this._range.end.toUnixInteger() * 1000,
                     showDetail: false,
                     emphasis: {
                         handleStyle: {
@@ -375,28 +373,28 @@ class PowerGraph extends HTMLElement {
             const option: echarts.EChartsCoreOption = this._chart.getOption();
             const dataZoom: any[] = option.dataZoom as any[];
             const startInPercent = dataZoom[0].start;
-            const timeRange: Pair<number, number> = this._data.getTimeRange();
+            const timeRange: Pair<DateTime, DateTime> = this._data.getTimeRange();
 
             if (startInPercent == 0) {
-                const endDate: Date = new Date(timeRange.first - 1);
-                this._range = new TimeRange(subHours(endDate, 24), endDate);
+                const endDate: DateTime = timeRange.first.minus({ millisecond: 1 })
+                this._range = new TimeRange(endDate.minus({ hours: 24 }), endDate);
             } else {
-                this._range = new TimeRange(new Date(timeRange.second), new Date());
+                this._range = new TimeRange(timeRange.second, DateTime.local());
             }
         }
 
-        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISOString()}, end: ${this._range.end.toISOString()} `);
-        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.getTime()}, end: ${this._range.end.getTime()} `);
+        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISO()}, end: ${this._range.end.toISO()} `);
+        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
 
         const request = {
             type: "history/history_during_period",
-            start_time: this._range.start.toISOString(),
-            end_time: this._range.end.toISOString(),
+            start_time: this._range.start.toISO(),
+            end_time: this._range.end.toISO(),
             minimal_response: true,
             no_attributes: true,
             entity_ids: entities
         };
-        //console.log(request);
+        console.log(request);
 
         this._requestInProgress = true;
         this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
@@ -404,7 +402,9 @@ class PowerGraph extends HTMLElement {
 
     private dataResponse(result: any): void {
         // console.log("dataResponse >>")
-        // console.log(result)
+        console.log("start: " + this._range.start.toUnixInteger())
+        console.log("end: " + this._range.end.toUnixInteger())
+        console.log(result)
 
         const option: echarts.EChartsCoreOption = this._chart.getOption();
 
@@ -418,13 +418,24 @@ class PowerGraph extends HTMLElement {
             const entity: EntityConfig = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity)
             const arr: DataItem[] = result[entityId];
+            console.log("arr.len: " + arr.length);
+            if (arr.length > 0) {
+                const data: number[][] = [];
+                for (let i = 1; i < arr.length; i++) {
+                    data.push([Math.round(arr[i].lu * 1000), +arr[i].s]);
+                }
 
-            const data: number[][] = [];
-            for (let i = 1; i < arr.length; i++) {
-                data.push([Math.round(arr[i].lu * 1000), +arr[i].s]);
+                // if (this._range.start.getTime() < data[0][0]) {
+                //     data.unshift([this._range.start.getTime(), 0]);
+                // }
+                // if (this._range.end.getTime() > data[data.length - 1][0]) {
+                //     data.push([this._range.end.getTime(), 0]);
+                // }
+
+                this._data.add(entityIndex++, data);
+            } else {
+                console.log("data is empty");
             }
-
-            this._data.add(entityIndex++, data);
         }
 
         const options = {
@@ -528,7 +539,7 @@ class PowerGraph extends HTMLElement {
     }
 
     private getDisplayedTimeRange(): Pair<number, number> {
-        const timeRange: Pair<number, number> = this._data.getTimeRange();
+        const timeRange: Pair<DateTime, DateTime> = this._data.getTimeRange();
 
         const option: echarts.EChartsCoreOption = this._chart.getOption();
         const dataZoom: any[] = option.dataZoom as any[];
@@ -536,8 +547,8 @@ class PowerGraph extends HTMLElement {
         const endInPercent = dataZoom[0].end;
 
         return new Pair<number, number>(
-            timeRange.first + (timeRange.second - timeRange.first) * startInPercent / 100,
-            timeRange.first + (timeRange.second - timeRange.first) * endInPercent / 100
+            timeRange.first.toMillis() + (timeRange.second.toMillis() - timeRange.first.toMillis()) * startInPercent / 100,
+            timeRange.first.toMillis() + (timeRange.second.toMillis() - timeRange.first.toMillis()) * endInPercent / 100
         );
     }
 

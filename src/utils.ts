@@ -1,3 +1,5 @@
+import { DateTime, Duration } from "luxon";
+
 export function isNumber(value?: string | number): boolean {
     return (value != null && value !== '' && !isNaN(Number(value.toString())));
 }
@@ -6,14 +8,7 @@ export function toNumber(value: string | null, defaultValue: number): number {
     return value != null && isNumber(value) ? +value : defaultValue;
 }
 
-export function subHours(date: Date, hours: number) {
-    const hoursToAdd = hours * 60 * 60 * 1000;
-    let newDate = new Date(date.getTime());
-    newDate.setTime(newDate.getTime() - hoursToAdd);
-    return newDate;
-}
-
-export function isObject(item) {
+export function isObject(item: any) {
     return (item && typeof item === 'object' && !Array.isArray(item));
 }
 
@@ -22,7 +17,7 @@ export function isObject(item) {
  * @param target
  * @param ...sources
  */
-export function mergeDeep(target, ...sources) {
+export function mergeDeep(target: any, ...sources: any) {
     if (!sources.length) return target;
     const source = sources.shift();
 

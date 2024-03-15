@@ -1,5 +1,6 @@
 import { GraphConfig } from "./GraphConfig";
 import { simplify } from './simplify';
+import { DateTime, Duration } from "luxon";
 
 export class Pair<T1, T2> {
     first: T1;
@@ -17,8 +18,11 @@ class DataBlock {
         this._data = data != null ? data : [];
     }
 
-    getTimeRange(): Pair<number, number> {
-        return new Pair<number, number>(this._data[0][0], this._data[this._data.length - 1][0]);
+    getTimeRange(): Pair<DateTime, DateTime> {
+        return new Pair<DateTime, DateTime>(
+            DateTime.fromMillis(this._data[0][0]),
+            DateTime.fromMillis(this._data[this._data.length - 1][0])
+        );
     }
 
     hasData(): boolean {
@@ -84,7 +88,7 @@ class EntityData {
         }
     }
 
-    getTimeRange(): Pair<number, number> {
+    getTimeRange(): Pair<DateTime, DateTime> {
         const dataBlock: DataBlock = this._dataBlock[0];
         return dataBlock.getTimeRange();
     }
@@ -125,15 +129,44 @@ export class GraphData {
         entityData.add(data);
     }
 
-    getTimeRange(): Pair<number, number> {
-        let minTime: number = Number.MAX_SAFE_INTEGER;
-        let maxTime: number = Number.MIN_SAFE_INTEGER;
+    getTimeRange(): Pair<DateTime, DateTime> {
+        let minTime: DateTime = DateTime.local(3000, 1, 1);
+        let maxTime: DateTime = DateTime.local(1980, 1, 1);
         for (const entityData of this._entityData) {
             const pair = entityData.getTimeRange();
-            minTime = Math.min(minTime, pair.first);
-            maxTime = Math.max(minTime, pair.second);
+            minTime = DateTime.min(minTime, pair.first);
+            maxTime = DateTime.max(minTime, pair.second);
         }
 
-        return new Pair<number, number>(minTime, maxTime);
+        return new Pair<DateTime, DateTime>(minTime, maxTime);
     }
+}
+
+export function getTimeRange(start: DateTime, end: DateTime): Pair<DateTime, DateTime> {
+
+    const diff: Duration = end.diff(start);
+    const secondsRange: number = diff.as('seconds');
+    if (secondsRange > 0 && secondsRange <= 59) {
+        return new Pair<DateTime, DateTime>(start.set({ second: 0 }), end.set({ second: 59 }));
+    }
+    const minutesRange: number = diff.as('minutes');
+    if (minutesRange > 0 && minutesRange <= 59) {
+        return new Pair<DateTime, DateTime>(start.set({ minute: 0, second: 0 }), end.set({ minute: 59, second: 59 }));
+    }
+    const hoursRange: number = diff.as('hours');
+    if (hoursRange >= 0 && hoursRange <= 23) {
+        return new Pair<DateTime, DateTime>(start.set({ hour: 0, minute: 0, second: 0 }), end.set({ hour: 23, minute: 59, second: 59 }));
+    }
+    const daysRange: number = diff.as('day');
+    if (daysRange >= 0 && daysRange <= 31) {
+        const newStart: DateTime = start.set({ day: 1, hour: 0, minute: 0, second: 0 });
+        const newEnd: DateTime = newStart.plus({ month: 1 }).minus({ second: 1 });
+        return new Pair<DateTime, DateTime>(newStart, newEnd);
+    }
+    // const monthRange: number = diff.as('month');
+    // if (monthRange >= 0 && monthRange <= 12) {
+    //     return new Pair<DateTime, DateTime>(start.set({ day: 1, hour: 0, minute: 0, second: 0 }), end.set({ hour: 23, minute: 59, second: 59 }));
+    // }
+
+    return null; //new Pair<Date, Date>(new Date(), new Date());
 }

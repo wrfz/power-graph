@@ -15,7 +15,8 @@
                 "@juggle/resize-observer",
                 "lit-html",
                 "lit-element",
-                "lit-html"
+                "lit-html",
+                "luxon"
             ]
         }
     },
@@ -29,6 +30,7 @@
         "@juggle/resize-observer": "^3.4.0",
         "@parcel/transformer-inline-string": "^2.8.3",
         "@types/jest": "^29.5.12",
+        "@types/luxon": "^3.4.2",
         "@types/node": "^20.11.25",
         "buffer": "^6.0.3",
         "echarts": "^5.5.0",
@@ -41,7 +43,8 @@
         "echarts": "^5.5.0",
         "lit": "^3.1.2",
         "lit-element": "^4.0.4",
-        "lit-html": "^3.1.2"
+        "lit-html": "^3.1.2",
+        "luxon": "^3.4.4"
     },
     "compilerOptions": {
         "types": [
