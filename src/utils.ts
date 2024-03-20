@@ -34,3 +34,21 @@ export function mergeDeep(target: any, ...sources: any) {
 
     return mergeDeep(target, ...sources);
 }
+
+export class DateTimeUtils {
+    static min(dateTime1: DateTime, dateTime2: DateTime): DateTime {
+        return dateTime1 < dateTime2 ? dateTime1 : dateTime2;
+    }
+
+    static max(dateTime1: DateTime, dateTime2: DateTime): DateTime {
+        return dateTime1 > dateTime2 ? dateTime1 : dateTime2;
+    }
+
+    static toString(dateTime: DateTime, showMilliseconds: boolean = false): string {
+        let format: string = 'dd.LL.yyyy hh:mm:ss';
+        if (showMilliseconds) {
+            format += ' SSS';
+        }
+        return dateTime.toFormat(format);
+    }
+}

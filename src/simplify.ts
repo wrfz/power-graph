@@ -1,3 +1,5 @@
+import { TimeRange } from './GraphData'
+
 type Point = number[];
 
 function getSquareDistance(p1: Point, p2: Point) {
@@ -82,38 +84,44 @@ function simplifyDPStep(points: Point[], first: number, last: number, squareTole
 }
 
 // simplification using Ramer-Douglas-Peucker algorithm
-function simplifyDouglasPeucker(points: Point[], squareTolerance: number) {
+function simplifyDouglasPeucker(points: Point[], squareTolerance: number, minTime: number, maxTime: number) {
     const simplified: Point[] = [];
 
     let first: number | null = null;
+    let lastIndex: number = -1;
     for (let index = 0; index < points.length; ++index) {
-        const value: number = points[index][1];
-        if (!isNaN(value) && value != null) {
-            if (first == null) {
-                first = index;
+        const point: number[] = points[index];
+        if (point[0] >= minTime && point[0] <= maxTime) {
+            const value: number = point[1];
+            if (!isNaN(value) && value != null) {
+                if (first == null) {
+                    first = index;
+                }
+                lastIndex = index;
+            } else if (first != null) {
+                const last = index - 1;
+                simplified.push(points[first]);
+                simplifyDPStep(points, first, last, squareTolerance, simplified);
+                simplified.push(points[last]);
+                simplified.push(point); // add point with NaN value
+                first = null;
             }
-        } else if (first != null) {
-            const last = index - 1;
-            simplified.push(points[first]);
-            simplifyDPStep(points, first, last, squareTolerance, simplified);
-            simplified.push(points[last]);
-            simplified.push(points[index]); // add point with NaN value
-            first = null;
+        } else if (point[0] > maxTime) {
+            break;
         }
     }
 
     if (first != null) {
-        const last = points.length - 1;
         simplified.push(points[first]);
-        simplifyDPStep(points, first, last, squareTolerance, simplified);
-        simplified.push(points[last]);
+        simplifyDPStep(points, first, lastIndex, squareTolerance, simplified);
+        simplified.push(points[lastIndex]);
     }
 
     return simplified;
 }
 
 // both algorithms combined for awesome performance
-export function simplify(points: Point[], tolerance: number, highestQuality: boolean) {
+export function simplify(points: Point[], tolerance: number, minTime: number, maxTime: number, highestQuality: boolean) {
 
     if (points.length <= 2) {
         return points;
@@ -122,7 +130,7 @@ export function simplify(points: Point[], tolerance: number, highestQuality: boo
     const squareTolerance = tolerance !== undefined ? tolerance * tolerance : 1;
 
     points = highestQuality ? points : simplifyRadialDist(points, squareTolerance);
-    points = simplifyDouglasPeucker(points, squareTolerance);
+    points = simplifyDouglasPeucker(points, squareTolerance, minTime, maxTime);
 
     return points;
 }

@@ -633,13 +633,6 @@ class $c646df2793882bac$export$566c11bd98e80427 {
         obj && Object.assign(this, obj);
     }
     validate() {
-        try {
-            if (this.start == null || this.start === undefined) throw new Error();
-            this.start = new Date(this.start);
-        } catch (err) {
-            this.start = new Date(new Date());
-            this.start.setHours(this.start.getHours() - 2);
-        }
         //console.log("start: " + this.start.toString());
         if (!this.entities) throw new Error("Please define an entity!");
     }
@@ -729,35 +722,39 @@ function $33684afa3d8783a3$var$simplifyDPStep(points, first, last, squareToleran
     }
 }
 // simplification using Ramer-Douglas-Peucker algorithm
-function $33684afa3d8783a3$var$simplifyDouglasPeucker(points, squareTolerance) {
+function $33684afa3d8783a3$var$simplifyDouglasPeucker(points, squareTolerance, minTime, maxTime) {
     const simplified = [];
     let first = null;
+    let lastIndex = -1;
     for(let index = 0; index < points.length; ++index){
-        const value = points[index][1];
-        if (!isNaN(value) && value != null) {
-            if (first == null) first = index;
-        } else if (first != null) {
-            const last = index - 1;
-            simplified.push(points[first]);
-            $33684afa3d8783a3$var$simplifyDPStep(points, first, last, squareTolerance, simplified);
-            simplified.push(points[last]);
-            simplified.push(points[index]); // add point with NaN value
-            first = null;
-        }
+        const point = points[index];
+        if (point[0] >= minTime && point[0] <= maxTime) {
+            const value = point[1];
+            if (!isNaN(value) && value != null) {
+                if (first == null) first = index;
+                lastIndex = index;
+            } else if (first != null) {
+                const last = index - 1;
+                simplified.push(points[first]);
+                $33684afa3d8783a3$var$simplifyDPStep(points, first, last, squareTolerance, simplified);
+                simplified.push(points[last]);
+                simplified.push(point); // add point with NaN value
+                first = null;
+            }
+        } else if (point[0] > maxTime) break;
     }
     if (first != null) {
-        const last = points.length - 1;
         simplified.push(points[first]);
-        $33684afa3d8783a3$var$simplifyDPStep(points, first, last, squareTolerance, simplified);
-        simplified.push(points[last]);
+        $33684afa3d8783a3$var$simplifyDPStep(points, first, lastIndex, squareTolerance, simplified);
+        simplified.push(points[lastIndex]);
     }
     return simplified;
 }
-function $33684afa3d8783a3$export$798b53621063651(points, tolerance, highestQuality) {
+function $33684afa3d8783a3$export$798b53621063651(points, tolerance, minTime, maxTime, highestQuality) {
     if (points.length <= 2) return points;
     const squareTolerance = tolerance !== undefined ? tolerance * tolerance : 1;
     points = highestQuality ? points : $33684afa3d8783a3$var$simplifyRadialDist(points, squareTolerance);
-    points = $33684afa3d8783a3$var$simplifyDouglasPeucker(points, squareTolerance);
+    points = $33684afa3d8783a3$var$simplifyDouglasPeucker(points, squareTolerance, minTime, maxTime);
     return points;
 }
 
@@ -7577,151 +7574,6 @@ $c70e8820d152b235$exports.VERSION = $c70e8820d152b235$var$VERSION;
 $c70e8820d152b235$exports.Zone = $c70e8820d152b235$var$Zone;
 
 
-class $53eba6098f86b86c$export$d63d7cff08fe4dc9 {
-    constructor(first, second){
-        this.first = first;
-        this.second = second;
-    }
-}
-class $53eba6098f86b86c$var$DataBlock {
-    constructor(data){
-        this._data = data != null ? data : [];
-    }
-    getTimeRange() {
-        return new $53eba6098f86b86c$export$d63d7cff08fe4dc9((0, $c70e8820d152b235$exports.DateTime).fromMillis(this._data[0][0]), (0, $c70e8820d152b235$exports.DateTime).fromMillis(this._data[this._data.length - 1][0]));
-    }
-    hasData() {
-        return this._data.length > 0;
-    }
-    getData() {
-        return this._data;
-    }
-    setData(data) {
-        this._data = data;
-    }
-    add(data) {
-        const isUnshift = data.length > 0 && this._data.length > 0 && data[0][0] < this._data[0][0];
-        if (isUnshift) this._data.unshift(...data);
-        else this._data.push(...data);
-    }
-    simplify(quality) {
-        return (0, $33684afa3d8783a3$export$798b53621063651)(this._data, quality, true);
-    }
-}
-class $53eba6098f86b86c$var$EntityData {
-    constructor(graphData){
-        this._graphData = graphData;
-        this._dataBlock = [
-            new $53eba6098f86b86c$var$DataBlock()
-        ];
-    }
-    hasData() {
-        const dataBlock = this._dataBlock[0];
-        return dataBlock.hasData();
-    }
-    getData(entityQualityIndex) {
-        const dataBlock = this._dataBlock[entityQualityIndex];
-        return dataBlock.getData();
-    }
-    add(data) {
-        const dataBlock = this._dataBlock[0];
-        dataBlock.add(data);
-        let index = 0;
-        for (const quality of this._graphData.getQualities()){
-            ++index;
-            while(this._dataBlock.length <= index)this._dataBlock.push(new $53eba6098f86b86c$var$DataBlock());
-            const sampledData = dataBlock.simplify(quality);
-            this._dataBlock[index].setData(sampledData);
-        }
-    }
-    getTimeRange() {
-        const dataBlock = this._dataBlock[0];
-        return dataBlock.getTimeRange();
-    }
-}
-class $53eba6098f86b86c$export$804ce8cdc3ef0047 {
-    constructor(){
-        this._entityData = [];
-    }
-    setQualities(qualities) {
-        this._qualities = qualities;
-    }
-    getQualities() {
-        return this._qualities;
-    }
-    hasData() {
-        const entityData = this._entityData[0];
-        return entityData != null ? entityData.hasData() : false;
-    }
-    getData(entityIndex, entityQualityIndex) {
-        const entityData = this._entityData[entityIndex];
-        return entityData.getData(entityQualityIndex);
-    }
-    add(entityIndex, data) {
-        while(this._entityData.length - 1 < entityIndex)this._entityData.push(new $53eba6098f86b86c$var$EntityData(this));
-        const entityData = this._entityData[entityIndex];
-        entityData.add(data);
-    }
-    getTimeRange() {
-        let minTime = (0, $c70e8820d152b235$exports.DateTime).local(3000, 1, 1);
-        let maxTime = (0, $c70e8820d152b235$exports.DateTime).local(1980, 1, 1);
-        for (const entityData of this._entityData){
-            const pair = entityData.getTimeRange();
-            minTime = (0, $c70e8820d152b235$exports.DateTime).min(minTime, pair.first);
-            maxTime = (0, $c70e8820d152b235$exports.DateTime).max(minTime, pair.second);
-        }
-        return new $53eba6098f86b86c$export$d63d7cff08fe4dc9(minTime, maxTime);
-    }
-}
-function $53eba6098f86b86c$export$fe73f2cc6771a40f(start, end) {
-    const diff = end.diff(start);
-    const secondsRange = diff.as("seconds");
-    if (secondsRange > 0 && secondsRange <= 59) return new $53eba6098f86b86c$export$d63d7cff08fe4dc9(start.set({
-        second: 0
-    }), end.set({
-        second: 59
-    }));
-    const minutesRange = diff.as("minutes");
-    if (minutesRange > 0 && minutesRange <= 59) return new $53eba6098f86b86c$export$d63d7cff08fe4dc9(start.set({
-        minute: 0,
-        second: 0
-    }), end.set({
-        minute: 59,
-        second: 59
-    }));
-    const hoursRange = diff.as("hours");
-    if (hoursRange >= 0 && hoursRange <= 23) return new $53eba6098f86b86c$export$d63d7cff08fe4dc9(start.set({
-        hour: 0,
-        minute: 0,
-        second: 0
-    }), end.set({
-        hour: 23,
-        minute: 59,
-        second: 59
-    }));
-    const daysRange = diff.as("day");
-    if (daysRange >= 0 && daysRange <= 31) {
-        const newStart = start.set({
-            day: 1,
-            hour: 0,
-            minute: 0,
-            second: 0
-        });
-        const newEnd = newStart.plus({
-            month: 1
-        }).minus({
-            second: 1
-        });
-        return new $53eba6098f86b86c$export$d63d7cff08fe4dc9(newStart, newEnd);
-    }
-    // const monthRange: number = diff.as('month');
-    // if (monthRange >= 0 && monthRange <= 12) {
-    //     return new Pair<DateTime, DateTime>(start.set({ day: 1, hour: 0, minute: 0, second: 0 }), end.set({ hour: 23, minute: 59, second: 59 }));
-    // }
-    return null; //new Pair<Date, Date>(new Date(), new Date());
-}
-
-
 function $44e3098839051485$export$7e4aa119212bc614(value) {
     return value != null && value !== "" && !isNaN(Number(value.toString()));
 }
@@ -7746,6 +7598,269 @@ function $44e3098839051485$export$dd702b3c8240390c(target, ...sources) {
     }
     return $44e3098839051485$export$dd702b3c8240390c(target, ...sources);
 }
+class $44e3098839051485$export$db030d70d2d24a2b {
+    static min(dateTime1, dateTime2) {
+        return dateTime1 < dateTime2 ? dateTime1 : dateTime2;
+    }
+    static max(dateTime1, dateTime2) {
+        return dateTime1 > dateTime2 ? dateTime1 : dateTime2;
+    }
+    static toString(dateTime, showMilliseconds = false) {
+        let format = "dd.LL.yyyy hh:mm:ss";
+        if (showMilliseconds) format += " SSS";
+        return dateTime.toFormat(format);
+    }
+}
+
+
+class $53eba6098f86b86c$export$d63d7cff08fe4dc9 {
+    constructor(...args){
+        if (args.length === 2) {
+            this.first = args[0];
+            this.second = args[1];
+        } else if (args.length === 1) {
+            const pair = args[0];
+            if (pair != null) {
+                this.first = pair.first;
+                this.second = pair.second;
+            }
+        }
+    }
+    equals(pair) {
+        return this.first === pair.first && this.second == pair.second;
+    }
+    toString() {
+        return "[" + this.first + ", " + this.second + "]";
+    }
+}
+class $53eba6098f86b86c$export$74e1c7e2f1829413 extends $53eba6098f86b86c$export$d63d7cff08fe4dc9 {
+    get from() {
+        return this.first;
+    }
+    get to() {
+        return this.second;
+    }
+    set from(value) {
+        this.first = value;
+    }
+    set to(value) {
+        this.second = value;
+    }
+    equals(other) {
+        if (other instanceof $53eba6098f86b86c$export$74e1c7e2f1829413) return this.first == null == (other.first == null) && this.second == null == (other.second == null) && this.first.equals(other.first) && this.second.equals(other.second);
+        else return false;
+    }
+    toString() {
+        return `[${this.from.toFormat("dd.LL.yyyy hh:mm:ss SSS")} - ${this.to.toFormat("dd.LL.yyyy hh:mm:ss SSS")}]`;
+    }
+}
+class $53eba6098f86b86c$var$DataBlock {
+    constructor(data){
+        this._data = data != null ? data : [];
+    }
+    getTimeRange() {
+        return new $53eba6098f86b86c$export$74e1c7e2f1829413((0, $c70e8820d152b235$exports.DateTime).fromMillis(this._data[0][0]), (0, $c70e8820d152b235$exports.DateTime).fromMillis(this._data[this._data.length - 1][0]));
+    }
+    hasData() {
+        return this._data.length > 0;
+    }
+    getData() {
+        return this._data;
+    }
+    setData(data) {
+        this._data = data;
+    }
+    add(data) {
+        const isUnshift = data.length > 0 && this._data.length > 0 && data[0][0] < this._data[0][0];
+        if (isUnshift) this._data.unshift(...data);
+        else this._data.push(...data);
+    }
+    simplify(quality) {
+        return (0, $33684afa3d8783a3$export$798b53621063651)(this._data, quality, null, null, true);
+    }
+}
+class $53eba6098f86b86c$var$EntityData {
+    constructor(graphData){
+        this._map = new Map;
+        this._graphData = graphData;
+        this._dataBlock = [
+            new $53eba6098f86b86c$var$DataBlock()
+        ];
+    }
+    hasData() {
+        const dataBlock = this._dataBlock[0];
+        return dataBlock.hasData();
+    }
+    getData(entityQualityIndex) {
+        const dataBlock = this._dataBlock[entityQualityIndex];
+        return dataBlock.getData();
+    }
+    getDataByTimeRange(timeRange, entireTimeRange) {
+        let data = this._map.get(timeRange);
+        if (data == null) {
+            const dataBlock = this._dataBlock[0];
+            const orgData = dataBlock.getData();
+            data = (0, $33684afa3d8783a3$export$798b53621063651)(orgData, 0.05, timeRange.first.toMillis(), timeRange.second.toMillis(), true);
+            if (data[0][0] > entireTimeRange.from.toMillis()) data.unshift([
+                entireTimeRange.from.toMillis(),
+                NaN
+            ]);
+            if (data[data.length - 1][0] < entireTimeRange.to.toMillis()) data.push([
+                entireTimeRange.to.toMillis(),
+                NaN
+            ]);
+            this._map.set(timeRange, data);
+        }
+        return data;
+    // const dataBlock: DataBlock = this._dataBlock[entityQualityIndex];
+    // return dataBlock.getData();
+    }
+    add(data, timeRange) {
+        const dataBlock = this._dataBlock[0];
+        dataBlock.add(data);
+    // let index = 0;
+    // for (const quality of this._graphData.getQualities()) {
+    //     ++index;
+    //     while (this._dataBlock.length <= index) {
+    //         this._dataBlock.push(new DataBlock());
+    //     }
+    //     const sampledData: number[][] = dataBlock.simplify(quality);
+    //     this._dataBlock[index].setData(sampledData);
+    // }
+    }
+    getTimeRange() {
+        const dataBlock = this._dataBlock[0];
+        return dataBlock.getTimeRange();
+    }
+}
+class $53eba6098f86b86c$export$804ce8cdc3ef0047 {
+    constructor(){
+        this._timeRange = new $53eba6098f86b86c$export$74e1c7e2f1829413((0, $c70e8820d152b235$exports.DateTime).local(3000), (0, $c70e8820d152b235$exports.DateTime).local(1980));
+        this._entityData = [];
+    }
+    setQualities(qualities) {
+        this._qualities = qualities;
+    }
+    getQualities() {
+        return this._qualities;
+    }
+    hasData() {
+        const entityData = this._entityData[0];
+        return entityData != null ? entityData.hasData() : false;
+    }
+    getData(entityIndex, entityQualityIndex) {
+        const entityData = this._entityData[entityIndex];
+        return entityData.getData(entityQualityIndex);
+    }
+    getDataByTimeRange(entityIndex, timeRange, entireTimeRange) {
+        const entityData = this._entityData[entityIndex];
+        return entityData.getDataByTimeRange(timeRange, entireTimeRange);
+    }
+    add(entityIndex, data) {
+        if (data.length > 0) {
+            this._timeRange.from = (0, $44e3098839051485$export$db030d70d2d24a2b).min(this._timeRange.from, (0, $c70e8820d152b235$exports.DateTime).fromMillis(data[0][0]));
+            this._timeRange.to = (0, $44e3098839051485$export$db030d70d2d24a2b).max(this._timeRange.to, (0, $c70e8820d152b235$exports.DateTime).fromMillis(data[data.length - 1][0]));
+        }
+        while(this._entityData.length - 1 < entityIndex)this._entityData.push(new $53eba6098f86b86c$var$EntityData(this));
+        const entityData = this._entityData[entityIndex];
+        entityData.add(data, this._timeRange);
+    }
+    /**
+   * Returns the time range of the entire loaded data.
+   *
+   * @returns Time range {@link TimeRange}
+   */ getMaxTimeRange() {
+        return this._timeRange;
+    }
+}
+function $53eba6098f86b86c$export$2a8ea63efc79099d(dataRange, viewport) {
+    if (viewport.to.toMillis() <= viewport.from.toMillis()) throw new Error(`Invalid dataRange: [${viewport.from}, ${viewport.to}]`);
+    const diff = (0, $c70e8820d152b235$exports.Duration).fromMillis(dataRange.to.diff(dataRange.from).toMillis() / 3.0);
+    const p0 = dataRange.from;
+    const p3 = dataRange.to;
+    if (viewport.from >= p0 && viewport.to <= dataRange.to) {
+        const p1 = p0.plus(diff);
+        const p2 = p1.plus(diff);
+        if (viewport.to <= p1) return $53eba6098f86b86c$export$2a8ea63efc79099d(new $53eba6098f86b86c$export$74e1c7e2f1829413(p0, p1), viewport);
+        else if (viewport.from >= p1 && viewport.to <= p2) return $53eba6098f86b86c$export$2a8ea63efc79099d(new $53eba6098f86b86c$export$74e1c7e2f1829413(p1, p2), viewport);
+        else if (viewport.from >= p2 && viewport.to <= p3) return $53eba6098f86b86c$export$2a8ea63efc79099d(new $53eba6098f86b86c$export$74e1c7e2f1829413(p2, p3), viewport);
+        else return dataRange;
+    } else if (viewport.from < p0 && viewport.to <= p3) {
+        const diff = p3.diff(p0);
+        return $53eba6098f86b86c$export$2a8ea63efc79099d(new $53eba6098f86b86c$export$74e1c7e2f1829413(p0.minus(diff).minus(diff), p3), viewport);
+    } else if (viewport.to > p3 && viewport.from >= p0) {
+        const diff = p3.diff(p0);
+        return $53eba6098f86b86c$export$2a8ea63efc79099d(new $53eba6098f86b86c$export$74e1c7e2f1829413(p0, p3.plus(diff).plus(diff)), viewport);
+    } else throw new Error("getTimeRange: Unexpected case!");
+}
+function $53eba6098f86b86c$export$7478ac4e020032ae(start, end) {
+    const diff = end.diff(start);
+    const secondsRange = diff.as("seconds");
+    if (secondsRange > 0 && secondsRange <= 59) {
+        console.log("case 1");
+        return new $53eba6098f86b86c$export$74e1c7e2f1829413(start.set({
+            second: 0,
+            millisecond: 0
+        }), end.set({
+            second: 59,
+            millisecond: 999
+        }));
+    }
+    const minutesRange = diff.as("minutes");
+    if (minutesRange > 0 && minutesRange <= 59) {
+        const dt = new $53eba6098f86b86c$export$74e1c7e2f1829413(start.set({
+            minute: 0,
+            second: 0,
+            millisecond: 0
+        }), end.set({
+            minute: 59,
+            second: 59,
+            millisecond: 999
+        }));
+        console.log("case 2: " + start.toISO() + "|" + dt.from.toISO());
+        return dt;
+    }
+    const hoursRange = diff.as("hours");
+    if (hoursRange >= 0 && hoursRange <= 23) {
+        const dt = new $53eba6098f86b86c$export$74e1c7e2f1829413(start.set({
+            hour: 0,
+            minute: 0,
+            second: 0,
+            millisecond: 0
+        }), end.set({
+            hour: 23,
+            minute: 59,
+            second: 59,
+            millisecond: 999
+        }));
+        console.log("case 3: " + dt.from.toISO());
+        return dt;
+    }
+    const daysRange = diff.as("day");
+    if (daysRange >= 0 && daysRange <= 31) {
+        console.log("case 4");
+        const newStart = start.set({
+            day: 1,
+            hour: 0,
+            minute: 0,
+            second: 0,
+            millisecond: 0
+        });
+        const newEnd = newStart.plus({
+            month: 1
+        }).minus({
+            millisecond: 1
+        });
+        return new $53eba6098f86b86c$export$74e1c7e2f1829413(newStart, newEnd);
+    }
+    // const monthRange: number = diff.as('month');
+    // if (monthRange >= 0 && monthRange <= 12) {
+    //     return new TimeRange(start.set({ day: 1, hour: 0, minute: 0, second: 0 }), end.set({ hour: 23, minute: 59, second: 59 }));
+    // }
+    console.log("else");
+    return null; //new Pair<Date, Date>(new Date(), new Date());
+}
+
 
 
 /*
@@ -66745,12 +66860,6 @@ $2456b78b4596463d$export$1f96ae73734a86cc([
     (0, $efb39adcfacd645d$export$efd07f28fd73e88c),
     (0, $1a298bbe5fdf68aa$export$4b3e715f166fdd78)
 ]);
-class $e23f1e1a76e2d7ce$var$TimeRange {
-    constructor(start, end){
-        this.start = start;
-        this.end = end;
-    }
-}
 class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
     constructor(){
         super();
@@ -66762,7 +66871,6 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         this._tid = null;
         this._series = [];
         this._data = new (0, $53eba6098f86b86c$export$804ce8cdc3ef0047)();
-        this._currentSeriesQualityIndex = 0;
         this._requestInProgress = false;
         this._ctrlPressed = false;
         this.createContent();
@@ -66771,10 +66879,10 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         });
     }
     setConfig(config) {
-        //console.log("setConfig");
+        // console.error("setConfig");
         this._config = new (0, $c646df2793882bac$export$566c11bd98e80427)(config);
         this._config.validate();
-        this._range = new $e23f1e1a76e2d7ce$var$TimeRange((0, $c70e8820d152b235$exports.DateTime).local().minus({
+        this._range = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).local().minus({
             hours: this._config.timRangeInHours
         }), (0, $c70e8820d152b235$exports.DateTime).local());
         this._data.setQualities(this._config.qualities);
@@ -66789,17 +66897,31 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         const thisGraph = this;
         this._card = document.createElement("ha-card");
         this._card.setAttribute("id", "chart-container");
+        // this._infoBox = document.createElement("div");
+        // this._infoBox.setAttribute("id", "infoBox");
         var _style = document.createElement("style");
         _style.textContent = `
             #chart-container {
                 position: relative;
                 height: 90%;
                 overflow: hidden;
-            }`;
+            }
+            #infoBox {
+                background-color: black;
+                border:1px silver solid;
+                width: 200px;
+                height:800px;
+                position:absolute;
+                left:600px;
+                top: 100px;
+                overflow:auto;
+                font-size: 12px;
+            }
+            `;
         this.attachShadow({
             mode: "open"
         });
-        this.shadowRoot.append(_style, this._card);
+        this.shadowRoot.append(_style, this._card /*, this._infoBox*/ );
         window.onkeydown = function(event) {
             thisGraph.onKeyDown(event);
         };
@@ -66833,7 +66955,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         //const option = this._chart.getOption();
         //const dataZoom: any[] = option.dataZoom as any[];
         const { start: start, end: end } = event;
-        //localStorage.setItem("dataZoom.startTime", startTime);
+        localStorage.setItem("dataZoom.startTime", start);
         //localStorage.setItem("dataZoom.endTime", endTime);
         //console.log(dataZoom);
         //console.log(event);
@@ -66849,7 +66971,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         else this.updateOptions({});
     }
     createChart() {
-        // console.log("createChart: " + this._config.renderer);
+        console.log("createChart: " + this._range);
         const thisGraph = this;
         this._chart = $5f4351e0b7aaad84$export$2cd8252107eb640b(this._card, null, {
             renderer: this._config.renderer
@@ -66898,7 +67020,8 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
                 formatter: function(name) {
                     const entityConfig = thisGraph._config.getEntityByName(name);
                     const entityIndex = thisGraph._config.getEntityConfigIndex(entityConfig);
-                    const series = thisGraph._data.getData(entityIndex, thisGraph._currentSeriesQualityIndex);
+                    const series = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange());
+                    // console.error(`legend->formatter: ${thisGraph._dataTimeRange}`);
                     const value = series[series.length - 1][1];
                     return name + " (" + value + " " + thisGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
                 }
@@ -66906,16 +67029,22 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
             dataZoom: [
                 {
                     type: "inside",
+                    filterMode: "none",
                     // rangeMode: ['value', 'value'],
-                    startValue: this._range.start.toUnixInteger() * 1000,
-                    endValue: this._range.end.toUnixInteger() * 1000,
+                    // startValue: this._range.from.toMillis(),
+                    // endValue: this._range.to.toMillis(),
+                    start: 50,
+                    end: 100,
                     preventDefaultMouseMove: false
                 },
                 {
                     type: "slider",
+                    filterMode: "none",
                     // rangeMode: ['value', 'value'],
-                    startValue: this._range.start.toUnixInteger() * 1000,
-                    endValue: this._range.end.toUnixInteger() * 1000,
+                    // startValue: this._range.from.toMillis(),
+                    // endValue: this._range.to.toMillis(),
+                    start: 50,
+                    end: 100,
                     showDetail: false,
                     emphasis: {
                         handleStyle: {
@@ -66988,8 +67117,17 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
                 text: this._config.title
             }
         });
+        this._lastOption = options;
         this._chart.setOption(options);
         if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+        const option = this._chart.getOption();
+        const dataZoom = option.dataZoom;
+        // console.log(dataZoom);
+        const millisecondsDiff = this._range.to.diff(this._range.from).toMillis() * 3;
+        const diff = (0, $c70e8820d152b235$exports.Duration).fromMillis(millisecondsDiff);
+        const startTime = this._range.to.minus(diff);
+        const endTime = this._range.to;
+        this._range = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(startTime, endTime);
         this.requestData();
     }
     requestData() {
@@ -67004,35 +67142,35 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
             const option = this._chart.getOption();
             const dataZoom = option.dataZoom;
             const startInPercent = dataZoom[0].start;
-            const timeRange = this._data.getTimeRange();
+            const range = this._data.getMaxTimeRange();
             if (startInPercent == 0) {
-                const endDate = timeRange.first.minus({
+                const endDate = range.from.minus({
                     millisecond: 1
                 });
-                this._range = new $e23f1e1a76e2d7ce$var$TimeRange(endDate.minus({
+                this._range = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(endDate.minus({
                     hours: 24
                 }), endDate);
-            } else this._range = new $e23f1e1a76e2d7ce$var$TimeRange(timeRange.second, (0, $c70e8820d152b235$exports.DateTime).local());
+            } else this._range = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(range.to, (0, $c70e8820d152b235$exports.DateTime).local());
         }
-        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toISO()}, end: ${this._range.end.toISO()} `);
-        console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
+        console.log(`requestData(entities: ${this._config.entities.length}, range: ${this._range} `);
+        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
         const request = {
             type: "history/history_during_period",
-            start_time: this._range.start.toISO(),
-            end_time: this._range.end.toISO(),
+            start_time: this._range.from.toISO(),
+            end_time: this._range.to.toISO(),
             minimal_response: true,
             no_attributes: true,
             entity_ids: entities
         };
-        console.log(request);
+        // console.log(request);
         this._requestInProgress = true;
-        this._hass.callWS(request).then(this.dataResponse.bind(this), this.loaderFailed.bind(this));
+        this._hass.callWS(request).then(this.responseData.bind(this), this.loaderFailed.bind(this));
     }
-    dataResponse(result) {
-        // console.log("dataResponse >>")
-        console.log("start: " + this._range.start.toUnixInteger());
-        console.log("end: " + this._range.end.toUnixInteger());
-        console.log(result);
+    responseData(result) {
+        console.log("responseData >>");
+        // console.log("start: " + this._range.start.toUnixInteger())
+        // console.log("end: " + this._range.end.toUnixInteger())
+        // console.log(result)
         const option = this._chart.getOption();
         //console.log("startTime: " + dataZoom[0].startTime);
         const thisCard = this;
@@ -67042,55 +67180,76 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
             const entity = this._config.getEntityById(entityId);
             legends.push(entity.name || entity.entity);
             const arr = result[entityId];
-            console.log("arr.len: " + arr.length);
+            // console.log("arr.len: " + arr.length);
             if (arr.length > 0) {
                 const data = [];
                 for(let i = 1; i < arr.length; i++)data.push([
                     Math.round(arr[i].lu * 1000),
                     +arr[i].s
                 ]);
-                // if (this._range.start.getTime() < data[0][0]) {
-                //     data.unshift([this._range.start.getTime(), 0]);
+                // console.log("ent: " + entityId + ", " + this._range);
+                // if (this._range.from.toMillis() < data[0][0]) {
+                //     // console.log("add from: " + this._range.from.toMillis());
+                //     data.unshift([this._range.from.toMillis(), NaN]);
                 // }
-                // if (this._range.end.getTime() > data[data.length - 1][0]) {
-                //     data.push([this._range.end.getTime(), 0]);
+                // if (this._range.to.toMillis() > data[data.length - 1][0]) {
+                //     // console.log("add to: " + this._range.to.toMillis());
+                //     data.push([this._range.to.toMillis(), NaN]);
                 // }
                 this._data.add(entityIndex++, data);
             } else console.log("data is empty");
         }
+        // console.log(this._data);
         const options = {
+            // xAxis: {
+            //     min: this._data.getTimeRange().from,
+            //     max: this._data.getTimeRange().to
+            // },
             legend: {
                 data: legends
             }
         };
         this.updateOptions(options);
-        if ((0, $44e3098839051485$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid == null) // console.log("setInterval");
-        this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+        (0, $44e3098839051485$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid;
         this._requestInProgress = false;
     }
     updateOptions(options) {
-        // console.log("updateOptions");
+        // console.error(`updateOptions: ${this._config.entities.length}`);
         const config = this._config;
+        const maxTimeRange = this._data.getMaxTimeRange();
         const displayedTimeRange = this.getDisplayedTimeRange();
-        const displayedTimeRangeNumber = displayedTimeRange.second - displayedTimeRange.first;
-        // console.log("displayedTimeRangeNumber: " + displayedTimeRangeNumber + ", xx: " + (displayedTimeRangeNumber / 1000 / 60 / 60));
-        this._currentSeriesQualityIndex = displayedTimeRangeNumber > 259200000 ? 1 : 0;
+        const lastDataTimeRange = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(this._dataTimeRange);
+        this._dataTimeRange = (0, $53eba6098f86b86c$export$2a8ea63efc79099d)(maxTimeRange, displayedTimeRange);
+        const displayedTimeRangeInPercent = this.displayTimeRangeToPercent(this._dataTimeRange, displayedTimeRange);
+        // console.log(`percent range: ${displayedTimeRangeInPercent}`);
+        const dataChanged = !lastDataTimeRange.equals(this._dataTimeRange);
         let points = 0;
         let info = "";
         if (this._config.showInfo) {
+            // info += `Current time: ${DateTime.local().toISO()}\n`;
             info += `Size: ${this._card.clientWidth} x ${this._card.clientHeight} \n`;
             info += `Renderer: ${this._config.renderer} \n`;
             info += `Sampling: ${this._config.sampling} \n`;
-            info += `currentSeriesQualityIndex: ${this._currentSeriesQualityIndex}\n`;
+            info += "\n";
+            info += `maxTimeRange:           ${maxTimeRange}\n`;
+            info += `displayedTimeRange: ${displayedTimeRange}\n`;
+            info += `dataTimeRange:           ${this._dataTimeRange}\n`;
+            info += `displayedTimeRangeInPercent: ${displayedTimeRangeInPercent}\n`;
+            info += "\n";
             info += "Points:\n";
         }
         this._series = [];
         for (const entityConfig of this._config.entities){
             const entityIndex = this._config.getEntityConfigIndex(entityConfig);
-            const series = this._data.getData(entityIndex, this._currentSeriesQualityIndex);
-            const seriesLength = series.length;
-            points += seriesLength;
-            info += `   ${entityConfig.entity}: ${seriesLength} \n`;
+            const series = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange());
+            points += series.length;
+            info += `   ${entityConfig.entity}: ${series.length} \n`;
+            info += `   min-max: ${new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(series[0][0]), (0, $c70e8820d152b235$exports.DateTime).fromMillis(series[series.length - 1][0]))} \n`;
+            // let html = "count: " + series.length + "<br/>";
+            // for (const point of series) {
+            //     html += DateTimeUtils.toString(DateTime.fromMillis(point[0]), true) + ": " + point[1] + "<br/>";
+            // }
+            // this._infoBox.innerHTML = html;
             const line = {
                 name: entityConfig.name || entityConfig.entity,
                 type: "line",
@@ -67143,16 +67302,39 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
                 }
             });
         }
-        this._chart.setOption(options);
-        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+        if (dataChanged) {
+            console.error("data changed");
+            this._lastOption = options;
+            this._chart.setOption(options);
+            if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+        }
     }
-    getDisplayedTimeRange() {
-        const timeRange = this._data.getTimeRange();
+    /**
+     * Returns the time range of the visible area
+     * @returns Time range {@TimeRange}
+     */ getDisplayedTimeRange() {
+        const range = this._data.getMaxTimeRange();
+        // const range: TimeRange = this._dataTimeRange != null ? this._dataTimeRange : this._data.getTimeRange();
+        console.log("range: " + range);
         const option = this._chart.getOption();
         const dataZoom = option.dataZoom;
         const startInPercent = dataZoom[0].start;
         const endInPercent = dataZoom[0].end;
-        return new (0, $53eba6098f86b86c$export$d63d7cff08fe4dc9)(timeRange.first.toMillis() + (timeRange.second.toMillis() - timeRange.first.toMillis()) * startInPercent / 100, timeRange.first.toMillis() + (timeRange.second.toMillis() - timeRange.first.toMillis()) * endInPercent / 100);
+        if ((0, $44e3098839051485$export$7e4aa119212bc614)(startInPercent) && (0, $44e3098839051485$export$7e4aa119212bc614)(endInPercent)) // console.log(dataZoom);
+        // console.log("startInPercent: " + startInPercent);
+        // console.log("endInPercent: " + endInPercent);
+        // console.log("range: " + range);
+        return new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * startInPercent / 100)), (0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * endInPercent / 100)));
+        else {
+            console.error("else case");
+            const option = this._lastOption;
+            const dataZoom = option.dataZoom;
+            return new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(dataZoom[0].startValue), (0, $c70e8820d152b235$exports.DateTime).fromMillis(dataZoom[0].endValue));
+        }
+    }
+    displayTimeRangeToPercent(maxTimeRange, displayedTimeRange) {
+        const range = maxTimeRange.to.toMillis() - maxTimeRange.from.toMillis();
+        return new (0, $53eba6098f86b86c$export$d63d7cff08fe4dc9)(100.0 * displayedTimeRange.from.diff(maxTimeRange.from).toMillis() / range, 100.0 * displayedTimeRange.to.diff(maxTimeRange.from).toMillis() / range);
     }
     loaderFailed(error) {
         console.log("Database request failure");

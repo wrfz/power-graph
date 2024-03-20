@@ -15,7 +15,6 @@ export class GraphConfig {
     shadow: boolean;
     entities: EntityConfig[];
     timRangeInHours: number = 2;
-    start: Date;
     animation: boolean = true;
     showTooltip: boolean = false;
     sampling: boolean = false;
@@ -36,15 +35,6 @@ export class GraphConfig {
     }
 
     public validate(): void {
-        try {
-            if (this.start == null || this.start === undefined) {
-                throw new Error();
-            }
-            this.start = new Date(this.start);
-        } catch (err: any) {
-            this.start = new Date(new Date());
-            this.start.setHours(this.start.getHours() - 2);
-        }
         //console.log("start: " + this.start.toString());
         if (!this.entities) {
             throw new Error('Please define an entity!');
