@@ -625,6 +625,7 @@ class $c646df2793882bac$export$566c11bd98e80427 {
         this.renderer = "canvas";
         this.showInfo = false;
         this.logOptions = false;
+        this.numberOfPoints = 1000;
         // for (const key in obj) {
         //     if (!this.hasOwnProperty(key)) {
         //         throw new Error('Unsupported key: ' + key);
@@ -7679,10 +7680,9 @@ class $53eba6098f86b86c$var$DataBlock {
         return (0, $33684afa3d8783a3$export$798b53621063651)(this._data, quality, null, null, true);
     }
 }
-class $53eba6098f86b86c$var$EntityData {
-    constructor(graphData){
+class $53eba6098f86b86c$export$1402489b11e44f0c {
+    constructor(){
         this._map = new Map;
-        this._graphData = graphData;
         this._dataBlock = [
             new $53eba6098f86b86c$var$DataBlock()
         ];
@@ -7695,38 +7695,43 @@ class $53eba6098f86b86c$var$EntityData {
         const dataBlock = this._dataBlock[entityQualityIndex];
         return dataBlock.getData();
     }
-    getDataByTimeRange(timeRange, entireTimeRange) {
+    getDataByTimeRange(timeRange, entireTimeRange, numberOfPoints) {
         let data = this._map.get(timeRange);
         if (data == null) {
             const dataBlock = this._dataBlock[0];
             const orgData = dataBlock.getData();
-            data = (0, $33684afa3d8783a3$export$798b53621063651)(orgData, 0.05, timeRange.first.toMillis(), timeRange.second.toMillis(), true);
-            if (data[0][0] > entireTimeRange.from.toMillis()) data.unshift([
-                entireTimeRange.from.toMillis(),
-                NaN
-            ]);
-            if (data[data.length - 1][0] < entireTimeRange.to.toMillis()) data.push([
-                entireTimeRange.to.toMillis(),
-                NaN
-            ]);
-            this._map.set(timeRange, data);
+            let tolerance = 0.1;
+            let lastTolerance = 0;
+            const map = new Map();
+            const list = [];
+            if (orgData.length > numberOfPoints) {
+                let run = 0;
+                do {
+                    ++run;
+                    const data = (0, $33684afa3d8783a3$export$798b53621063651)(orgData, tolerance, timeRange.first.toMillis(), timeRange.second.toMillis(), true);
+                    map.set(tolerance, data);
+                    list.push(new $53eba6098f86b86c$export$d63d7cff08fe4dc9(tolerance, data.length));
+                    lastTolerance = tolerance;
+                    tolerance = $53eba6098f86b86c$export$f26fbefb245185e5(list, numberOfPoints);
+                // console.log(tolerance + " -> " + data.length);
+                }while (run < 10);
+                data = (0, $33684afa3d8783a3$export$798b53621063651)(orgData, tolerance, timeRange.first.toMillis(), timeRange.second.toMillis(), true);
+                if (data.length == 0 || data[0][0] > entireTimeRange.from.toMillis()) data.unshift([
+                    entireTimeRange.from.toMillis(),
+                    NaN
+                ]);
+                if (data[data.length - 1][0] < entireTimeRange.to.toMillis()) data.push([
+                    entireTimeRange.to.toMillis(),
+                    NaN
+                ]);
+                this._map.set(timeRange, data);
+            } else data = orgData;
         }
         return data;
-    // const dataBlock: DataBlock = this._dataBlock[entityQualityIndex];
-    // return dataBlock.getData();
     }
-    add(data, timeRange) {
+    add(data) {
         const dataBlock = this._dataBlock[0];
         dataBlock.add(data);
-    // let index = 0;
-    // for (const quality of this._graphData.getQualities()) {
-    //     ++index;
-    //     while (this._dataBlock.length <= index) {
-    //         this._dataBlock.push(new DataBlock());
-    //     }
-    //     const sampledData: number[][] = dataBlock.simplify(quality);
-    //     this._dataBlock[index].setData(sampledData);
-    // }
     }
     getTimeRange() {
         const dataBlock = this._dataBlock[0];
@@ -7752,18 +7757,18 @@ class $53eba6098f86b86c$export$804ce8cdc3ef0047 {
         const entityData = this._entityData[entityIndex];
         return entityData.getData(entityQualityIndex);
     }
-    getDataByTimeRange(entityIndex, timeRange, entireTimeRange) {
+    getDataByTimeRange(entityIndex, timeRange, entireTimeRange, numberOfPoints) {
         const entityData = this._entityData[entityIndex];
-        return entityData.getDataByTimeRange(timeRange, entireTimeRange);
+        return entityData.getDataByTimeRange(timeRange, entireTimeRange, numberOfPoints);
     }
     add(entityIndex, data) {
         if (data.length > 0) {
             this._timeRange.from = (0, $44e3098839051485$export$db030d70d2d24a2b).min(this._timeRange.from, (0, $c70e8820d152b235$exports.DateTime).fromMillis(data[0][0]));
             this._timeRange.to = (0, $44e3098839051485$export$db030d70d2d24a2b).max(this._timeRange.to, (0, $c70e8820d152b235$exports.DateTime).fromMillis(data[data.length - 1][0]));
         }
-        while(this._entityData.length - 1 < entityIndex)this._entityData.push(new $53eba6098f86b86c$var$EntityData(this));
+        while(this._entityData.length - 1 < entityIndex)this._entityData.push(new $53eba6098f86b86c$export$1402489b11e44f0c());
         const entityData = this._entityData[entityIndex];
-        entityData.add(data, this._timeRange);
+        entityData.add(data);
     }
     /**
    * Returns the time range of the entire loaded data.
@@ -7793,72 +7798,32 @@ function $53eba6098f86b86c$export$2a8ea63efc79099d(dataRange, viewport) {
         return $53eba6098f86b86c$export$2a8ea63efc79099d(new $53eba6098f86b86c$export$74e1c7e2f1829413(p0, p3.plus(diff).plus(diff)), viewport);
     } else throw new Error("getTimeRange: Unexpected case!");
 }
-function $53eba6098f86b86c$export$7478ac4e020032ae(start, end) {
-    const diff = end.diff(start);
-    const secondsRange = diff.as("seconds");
-    if (secondsRange > 0 && secondsRange <= 59) {
-        console.log("case 1");
-        return new $53eba6098f86b86c$export$74e1c7e2f1829413(start.set({
-            second: 0,
-            millisecond: 0
-        }), end.set({
-            second: 59,
-            millisecond: 999
-        }));
-    }
-    const minutesRange = diff.as("minutes");
-    if (minutesRange > 0 && minutesRange <= 59) {
-        const dt = new $53eba6098f86b86c$export$74e1c7e2f1829413(start.set({
-            minute: 0,
-            second: 0,
-            millisecond: 0
-        }), end.set({
-            minute: 59,
-            second: 59,
-            millisecond: 999
-        }));
-        console.log("case 2: " + start.toISO() + "|" + dt.from.toISO());
-        return dt;
-    }
-    const hoursRange = diff.as("hours");
-    if (hoursRange >= 0 && hoursRange <= 23) {
-        const dt = new $53eba6098f86b86c$export$74e1c7e2f1829413(start.set({
-            hour: 0,
-            minute: 0,
-            second: 0,
-            millisecond: 0
-        }), end.set({
-            hour: 23,
-            minute: 59,
-            second: 59,
-            millisecond: 999
-        }));
-        console.log("case 3: " + dt.from.toISO());
-        return dt;
-    }
-    const daysRange = diff.as("day");
-    if (daysRange >= 0 && daysRange <= 31) {
-        console.log("case 4");
-        const newStart = start.set({
-            day: 1,
-            hour: 0,
-            minute: 0,
-            second: 0,
-            millisecond: 0
-        });
-        const newEnd = newStart.plus({
-            month: 1
-        }).minus({
-            millisecond: 1
-        });
-        return new $53eba6098f86b86c$export$74e1c7e2f1829413(newStart, newEnd);
-    }
-    // const monthRange: number = diff.as('month');
-    // if (monthRange >= 0 && monthRange <= 12) {
-    //     return new TimeRange(start.set({ day: 1, hour: 0, minute: 0, second: 0 }), end.set({ hour: 23, minute: 59, second: 59 }));
-    // }
-    console.log("else");
-    return null; //new Pair<Date, Date>(new Date(), new Date());
+function $53eba6098f86b86c$export$f26fbefb245185e5(list, numberOfPoints) {
+    if (list.length >= 1) {
+        if (list.length >= 2) {
+            let bestUnder = null;
+            let bestOver = null;
+            for (const item of list){
+                const tolerance = item.first;
+                if (item.second > numberOfPoints) {
+                    if (bestOver == null || item.second < bestOver.second) bestOver = item;
+                } else if (bestUnder == null || item.second > bestUnder.second) bestUnder = item;
+            }
+            if (bestOver != null && bestUnder != null) return (bestOver.first + bestUnder.first) / 2.0;
+            else if (bestUnder == null) {
+                if (bestOver.second > numberOfPoints) return bestOver.first * 2.0;
+                else if (bestOver.second < numberOfPoints) return bestOver.first / 2.0;
+                else return bestOver.first;
+            } else if (bestOver == null) {
+                if (bestUnder.second < numberOfPoints) return bestUnder.first / 2.0;
+                else if (bestUnder.second > numberOfPoints) return bestUnder.first * 2.0;
+                else return bestUnder.first;
+            } else throw new Error("getNextTolerance: Unexpected case!");
+        } else for (const item of list){
+            if (item.second > numberOfPoints) return item.first * 2;
+            else return item.first / 2.0;
+        }
+    } else return 0.5;
 }
 
 
@@ -66950,6 +66915,14 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
             dataZoomSelectActive: this._ctrlPressed
         });
     }
+    onDoubleClick(event) {
+        console.log("onDoubleClick");
+        this._chart.dispatchAction({
+            type: "takeGlobalCursor",
+            key: "dataZoomSelect",
+            dataZoomSelectActive: true
+        });
+    }
     onScroll(event) {
         //console.log(event);
         //const option = this._chart.getOption();
@@ -66971,13 +66944,16 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         else this.updateOptions({});
     }
     createChart() {
-        console.log("createChart: " + this._range);
+        // console.log("createChart: " + this._range);
         const thisGraph = this;
         this._chart = $5f4351e0b7aaad84$export$2cd8252107eb640b(this._card, null, {
             renderer: this._config.renderer
         });
         this._chart.on("dataZoom", function(evt) {
             thisGraph.onScroll(evt);
+        });
+        this._chart.on("dblclick", function(evt) {
+            thisGraph.onDoubleClick(evt);
         });
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
@@ -67020,7 +66996,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
                 formatter: function(name) {
                     const entityConfig = thisGraph._config.getEntityByName(name);
                     const entityIndex = thisGraph._config.getEntityConfigIndex(entityConfig);
-                    const series = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange());
+                    const series = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange(), thisGraph._config.numberOfPoints);
                     // console.error(`legend->formatter: ${thisGraph._dataTimeRange}`);
                     const value = series[series.length - 1][1];
                     return name + " (" + value + " " + thisGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
@@ -67152,7 +67128,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
                 }), endDate);
             } else this._range = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(range.to, (0, $c70e8820d152b235$exports.DateTime).local());
         }
-        console.log(`requestData(entities: ${this._config.entities.length}, range: ${this._range} `);
+        // console.log(`requestData(entities: ${this._config.entities.length}, range: ${this._range} `);
         // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
         const request = {
             type: "history/history_during_period",
@@ -67167,7 +67143,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         this._hass.callWS(request).then(this.responseData.bind(this), this.loaderFailed.bind(this));
     }
     responseData(result) {
-        console.log("responseData >>");
+        // console.log("responseData >>")
         // console.log("start: " + this._range.start.toUnixInteger())
         // console.log("end: " + this._range.end.toUnixInteger())
         // console.log(result)
@@ -67212,9 +67188,10 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         this.updateOptions(options);
         (0, $44e3098839051485$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid;
         this._requestInProgress = false;
+    // console.log("responseData <<")
     }
     updateOptions(options) {
-        // console.error(`updateOptions: ${this._config.entities.length}`);
+        // console.info(`updateOptions: ${this._config.entities.length} >>`);
         const config = this._config;
         const maxTimeRange = this._data.getMaxTimeRange();
         const displayedTimeRange = this.getDisplayedTimeRange();
@@ -67241,7 +67218,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         this._series = [];
         for (const entityConfig of this._config.entities){
             const entityIndex = this._config.getEntityConfigIndex(entityConfig);
-            const series = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange());
+            const series = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange(), this._config.numberOfPoints);
             points += series.length;
             info += `   ${entityConfig.entity}: ${series.length} \n`;
             info += `   min-max: ${new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(series[0][0]), (0, $c70e8820d152b235$exports.DateTime).fromMillis(series[series.length - 1][0]))} \n`;
@@ -67288,7 +67265,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
             });
             this._series.push(line);
         }
-        (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
+        if (dataChanged) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
             series: this._series
         });
         if (this._config.showInfo) {
@@ -67302,12 +67279,10 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
                 }
             });
         }
-        if (dataChanged) {
-            console.error("data changed");
-            this._lastOption = options;
-            this._chart.setOption(options);
-            if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
-        }
+        this._lastOption = options;
+        this._chart.setOption(options);
+        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+    // console.info("updateOptions <<");
     }
     /**
      * Returns the time range of the visible area
@@ -67315,7 +67290,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
      */ getDisplayedTimeRange() {
         const range = this._data.getMaxTimeRange();
         // const range: TimeRange = this._dataTimeRange != null ? this._dataTimeRange : this._data.getTimeRange();
-        console.log("range: " + range);
+        // console.log("range: " + range);
         const option = this._chart.getOption();
         const dataZoom = option.dataZoom;
         const startInPercent = dataZoom[0].start;
@@ -67337,8 +67312,8 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         return new (0, $53eba6098f86b86c$export$d63d7cff08fe4dc9)(100.0 * displayedTimeRange.from.diff(maxTimeRange.from).toMillis() / range, 100.0 * displayedTimeRange.to.diff(maxTimeRange.from).toMillis() / range);
     }
     loaderFailed(error) {
-        console.log("Database request failure");
-        console.log(error);
+        console.error("Database request failure");
+        console.error(error);
     }
     clearRefreshInterval() {
         if (this._tid != null) {

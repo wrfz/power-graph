@@ -10,7 +10,7 @@ import {
 } from "lit";
 
 import { GraphConfig, EntityConfig } from './GraphConfig';
-import { Pair, TimeRange, GraphData, getTimeRangeOld, getCurrentDataTimeRange } from './GraphData'
+import { Pair, TimeRange, GraphData, getCurrentDataTimeRange } from './GraphData'
 import { mergeDeep, isNumber, toNumber, DateTimeUtils } from './utils';
 
 import * as echarts from 'echarts/core';
@@ -181,6 +181,15 @@ class PowerGraph extends HTMLElement {
         });
     }
 
+    private onDoubleClick(event: any) {
+        console.log("onDoubleClick");
+        this._chart.dispatchAction({
+            type: "takeGlobalCursor",
+            key: "dataZoomSelect",
+            dataZoomSelectActive: true
+        });
+    }
+
     private onScroll(event: any) {
         //console.log(event);
         //const option = this._chart.getOption();
@@ -209,11 +218,12 @@ class PowerGraph extends HTMLElement {
     }
 
     private createChart(): void {
-        console.log("createChart: " + this._range);
+        // console.log("createChart: " + this._range);
         const thisGraph: PowerGraph = this;
 
         this._chart = echarts.init(this._card, null, { renderer: this._config.renderer });
         this._chart.on('dataZoom', function (evt) { thisGraph.onScroll(evt); });
+        this._chart.on('dblclick', function (evt) { thisGraph.onDoubleClick(evt); });
 
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
@@ -258,7 +268,7 @@ class PowerGraph extends HTMLElement {
                 formatter: function (name: string): string {
                     const entityConfig: EntityConfig = thisGraph._config.getEntityByName(name);
                     const entityIndex: number = thisGraph._config.getEntityConfigIndex(entityConfig);
-                    const series: number[][] = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange());
+                    const series: number[][] = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange(), thisGraph._config.numberOfPoints);
                     // console.error(`legend->formatter: ${thisGraph._dataTimeRange}`);
                     const value: number = series[series.length - 1][1];
                     return name + " (" + value + " " + thisGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
@@ -406,7 +416,7 @@ class PowerGraph extends HTMLElement {
             }
         }
 
-        console.log(`requestData(entities: ${this._config.entities.length}, range: ${this._range} `);
+        // console.log(`requestData(entities: ${this._config.entities.length}, range: ${this._range} `);
         // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
 
         const request = {
@@ -424,7 +434,7 @@ class PowerGraph extends HTMLElement {
     }
 
     private responseData(result: any): void {
-        console.log("responseData >>")
+        // console.log("responseData >>")
         // console.log("start: " + this._range.start.toUnixInteger())
         // console.log("end: " + this._range.end.toUnixInteger())
         // console.log(result)
@@ -484,10 +494,11 @@ class PowerGraph extends HTMLElement {
         }
 
         this._requestInProgress = false;
+        // console.log("responseData <<")
     }
 
     private updateOptions(options: echarts.EChartsCoreOption): void {
-        // console.error(`updateOptions: ${this._config.entities.length}`);
+        // console.info(`updateOptions: ${this._config.entities.length} >>`);
         const config: GraphConfig = this._config;
 
         const maxTimeRange: TimeRange = this._data.getMaxTimeRange();
@@ -517,7 +528,7 @@ class PowerGraph extends HTMLElement {
         this._series = [];
         for (const entityConfig of this._config.entities) {
             const entityIndex: number = this._config.getEntityConfigIndex(entityConfig);
-            const series: number[][] = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange());
+            const series: number[][] = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange(), this._config.numberOfPoints);
 
             points += series.length;
             info += `   ${entityConfig.entity}: ${series.length} \n`;
@@ -567,9 +578,11 @@ class PowerGraph extends HTMLElement {
             this._series.push(line);
         }
 
-        mergeDeep(options, {
-            series: this._series
-        });
+        if (dataChanged) {
+            mergeDeep(options, {
+                series: this._series
+            });
+        }
 
         if (this._config.showInfo) {
             info += `   sum: ${points} `;
@@ -582,15 +595,13 @@ class PowerGraph extends HTMLElement {
                 }
             });
         }
-        if (dataChanged) {
-            console.error("data changed");
 
-            this._lastOption = options;
-            this._chart.setOption(options);
-            if (this._config.logOptions) {
-                console.log("setOptions: " + JSON.stringify(options));
-            }
+        this._lastOption = options;
+        this._chart.setOption(options);
+        if (this._config.logOptions) {
+            console.log("setOptions: " + JSON.stringify(options));
         }
+        // console.info("updateOptions <<");
     }
 
     /**
@@ -600,7 +611,7 @@ class PowerGraph extends HTMLElement {
     private getDisplayedTimeRange(): TimeRange {
         const range: TimeRange = this._data.getMaxTimeRange();
         // const range: TimeRange = this._dataTimeRange != null ? this._dataTimeRange : this._data.getTimeRange();
-        console.log("range: " + range);
+        // console.log("range: " + range);
 
 
         const option: echarts.EChartsCoreOption = this._chart.getOption();
@@ -634,8 +645,8 @@ class PowerGraph extends HTMLElement {
     }
 
     private loaderFailed(error: string): void {
-        console.log("Database request failure");
-        console.log(error);
+        console.error("Database request failure");
+        console.error(error);
     }
 
     private clearRefreshInterval(): void {

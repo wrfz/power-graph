@@ -22,7 +22,8 @@ export class GraphConfig {
     renderer: 'canvas' | 'svg' = 'canvas';
     showInfo: boolean = false;
     logOptions: boolean = false;
-    qualities: number[]
+    qualities: number[];
+    numberOfPoints: number = 1000;
 
     constructor(obj: any) {
         // for (const key in obj) {

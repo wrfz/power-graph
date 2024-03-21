@@ -105,13 +105,11 @@ class DataBlock {
     }
 }
 
-class EntityData {
-    private _graphData: GraphData;
+export class EntityData {
     private _dataBlock: DataBlock[];
     private _map: Map<TimeRange, number[][]> = new Map<TimeRange, number[][]>;
 
-    constructor(graphData: GraphData) {
-        this._graphData = graphData;
+    constructor() {
         this._dataBlock = [new DataBlock()];
     }
 
@@ -125,39 +123,49 @@ class EntityData {
         return dataBlock.getData();
     }
 
-    getDataByTimeRange(timeRange: TimeRange, entireTimeRange: TimeRange): number[][] {
+    getDataByTimeRange(timeRange: TimeRange, entireTimeRange: TimeRange, numberOfPoints: number): number[][] {
         let data: number[][] = this._map.get(timeRange);
         if (data == null) {
             const dataBlock: DataBlock = this._dataBlock[0];
             const orgData: number[][] = dataBlock.getData();
 
-            data = simplify(orgData, 0.05, timeRange.first.toMillis(), timeRange.second.toMillis(), true);
-            if (data[0][0] > entireTimeRange.from.toMillis()) {
-                data.unshift([entireTimeRange.from.toMillis(), NaN]);
+            let tolerance: number = 0.1;
+            let lastTolerance: number = 0;
+            const map: Map<number, number[][]> = new Map<number, number[][]>();
+            const list: Pair<number, number>[] = [];
+
+            if (orgData.length > numberOfPoints) {
+                let run: number = 0;
+                do {
+                    ++run;
+                    const data: number[][] = simplify(orgData, tolerance, timeRange.first.toMillis(), timeRange.second.toMillis(), true);
+                    map.set(tolerance, data);
+                    list.push(new Pair<number, number>(tolerance, data.length));
+
+                    lastTolerance = tolerance;
+                    tolerance = getNextTolerance(list, numberOfPoints);
+                    // console.log(tolerance + " -> " + data.length);
+                } while (run < 10);
+
+                data = simplify(orgData, tolerance, timeRange.first.toMillis(), timeRange.second.toMillis(), true);
+
+                if (data.length == 0 || data[0][0] > entireTimeRange.from.toMillis()) {
+                    data.unshift([entireTimeRange.from.toMillis(), NaN]);
+                }
+                if (data[data.length - 1][0] < entireTimeRange.to.toMillis()) {
+                    data.push([entireTimeRange.to.toMillis(), NaN]);
+                }
+                this._map.set(timeRange, data);
+            } else {
+                data = orgData;
             }
-            if (data[data.length - 1][0] < entireTimeRange.to.toMillis()) {
-                data.push([entireTimeRange.to.toMillis(), NaN]);
-            }
-            this._map.set(timeRange, data);
         }
         return data;
-        // const dataBlock: DataBlock = this._dataBlock[entityQualityIndex];
-        // return dataBlock.getData();
     }
 
-    add(data: number[][], timeRange: TimeRange): void {
+    add(data: number[][]): void {
         const dataBlock: DataBlock = this._dataBlock[0];
         dataBlock.add(data);
-
-        // let index = 0;
-        // for (const quality of this._graphData.getQualities()) {
-        //     ++index;
-        //     while (this._dataBlock.length <= index) {
-        //         this._dataBlock.push(new DataBlock());
-        //     }
-        //     const sampledData: number[][] = dataBlock.simplify(quality);
-        //     this._dataBlock[index].setData(sampledData);
-        // }
     }
 
     getTimeRange(): TimeRange {
@@ -193,9 +201,9 @@ export class GraphData {
         return entityData.getData(entityQualityIndex);
     }
 
-    getDataByTimeRange(entityIndex: number, timeRange: TimeRange, entireTimeRange: TimeRange): number[][] {
+    getDataByTimeRange(entityIndex: number, timeRange: TimeRange, entireTimeRange: TimeRange, numberOfPoints: number): number[][] {
         const entityData: EntityData = this._entityData[entityIndex];
-        return entityData.getDataByTimeRange(timeRange, entireTimeRange);
+        return entityData.getDataByTimeRange(timeRange, entireTimeRange, numberOfPoints);
     }
 
     add(entityIndex: number, data: number[][]): void {
@@ -205,11 +213,11 @@ export class GraphData {
         }
 
         while ((this._entityData.length - 1) < entityIndex) {
-            this._entityData.push(new EntityData(this));
+            this._entityData.push(new EntityData());
         }
 
         const entityData: EntityData = this._entityData[entityIndex];
-        entityData.add(data, this._timeRange);
+        entityData.add(data);
     }
 
     /**
@@ -261,37 +269,57 @@ export function getCurrentDataTimeRange(dataRange: TimeRange, viewport: TimeRang
     }
 }
 
-export function getTimeRangeOld(start: DateTime, end: DateTime): TimeRange {
+export function getNextTolerance(list: Pair<number, number>[], numberOfPoints: number): number {
+    if (list.length >= 1) {
+        if (list.length >= 2) {
+            let bestUnder: Pair<number, number> = null;
+            let bestOver: Pair<number, number> = null;
 
-    const diff: Duration = end.diff(start);
-    const secondsRange: number = diff.as('seconds');
-    if (secondsRange > 0 && secondsRange <= 59) {
-        console.log("case 1");
-        return new TimeRange(start.set({ second: 0, millisecond: 0 }), end.set({ second: 59, millisecond: 999 }));
+            for (const item of list) {
+                const tolerance: number = item.first;
+
+                if (item.second > numberOfPoints) {
+                    if (bestOver == null || item.second < bestOver.second) {
+                        bestOver = item;
+                    }
+                } else {
+                    if (bestUnder == null || item.second > bestUnder.second) {
+                        bestUnder = item;
+                    }
+                }
+            }
+
+            if (bestOver != null && bestUnder != null) {
+                return (bestOver.first + bestUnder.first) / 2.0;
+            } else if (bestUnder == null) {
+                if (bestOver.second > numberOfPoints) {
+                    return bestOver.first * 2.0;
+                } else if (bestOver.second < numberOfPoints) {
+                    return bestOver.first / 2.0;
+                } else {
+                    return bestOver.first;
+                }
+            } else if (bestOver == null) {
+                if (bestUnder.second < numberOfPoints) {
+                    return bestUnder.first / 2.0;
+                } else if (bestUnder.second > numberOfPoints) {
+                    return bestUnder.first * 2.0;
+                } else {
+                    return bestUnder.first;
+                }
+            } else {
+                throw new Error("getNextTolerance: Unexpected case!");
+            }
+        } else { // Only one try exists
+            for (const item of list) {
+                if (item.second > numberOfPoints) {
+                    return item.first * 2;
+                } else {
+                    return item.first / 2.0;
+                }
+            }
+        }
+    } else {
+        return 0.5;
     }
-    const minutesRange: number = diff.as('minutes');
-    if (minutesRange > 0 && minutesRange <= 59) {
-        const dt = new TimeRange(start.set({ minute: 0, second: 0, millisecond: 0 }), end.set({ minute: 59, second: 59, millisecond: 999 }));
-        console.log("case 2: " + start.toISO() + "|" + dt.from.toISO());
-        return dt;
-    }
-    const hoursRange: number = diff.as('hours');
-    if (hoursRange >= 0 && hoursRange <= 23) {
-        const dt = new TimeRange(start.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }), end.set({ hour: 23, minute: 59, second: 59, millisecond: 999 }));
-        console.log("case 3: " + dt.from.toISO());
-        return dt;
-    }
-    const daysRange: number = diff.as('day');
-    if (daysRange >= 0 && daysRange <= 31) {
-        console.log("case 4");
-        const newStart: DateTime = start.set({ day: 1, hour: 0, minute: 0, second: 0, millisecond: 0 });
-        const newEnd: DateTime = newStart.plus({ month: 1 }).minus({ millisecond: 1 });
-        return new TimeRange(newStart, newEnd);
-    }
-    // const monthRange: number = diff.as('month');
-    // if (monthRange >= 0 && monthRange <= 12) {
-    //     return new TimeRange(start.set({ day: 1, hour: 0, minute: 0, second: 0 }), end.set({ hour: 23, minute: 59, second: 59 }));
-    // }
-    console.log("else");
-    return null; //new Pair<Date, Date>(new Date(), new Date());
 }

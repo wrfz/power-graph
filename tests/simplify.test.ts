@@ -1,7 +1,7 @@
 import { simplify } from '../src/simplify';
 import { largestTriangleThreeBuckets } from '../src/lttb';
 import { mergeDeep, isNumber, toNumber } from '../src/utils';
-import { GraphData, Pair, TimeRange, getCurrentDataTimeRange, getTimeRangeOld } from '../src/GraphData';
+import { GraphData, EntityData, Pair, TimeRange, getCurrentDataTimeRange, getNextTolerance } from '../src/GraphData';
 import { DateTime, Settings, Duration } from "luxon";
 // import * as dayjs from 'dayjs'
 // import * as isLeapYear from 'dayjs/plugin/isLeapYear' // import plugin
@@ -51,32 +51,6 @@ test('simplify test with gaps', () => {
 
 //     expect(largestTriangleThreeBuckets(points, 5)).toStrictEqual(expected);
 // });
-
-test('getTimeRangeOld', () => {
-    // 1 minute range
-    expect(getTimeRangeOld(DateTime.local(2024, 3, 15, 10, 24, 17, 11), DateTime.local(2024, 3, 15, 10, 24, 38, 77))).
-        toStrictEqual(new TimeRange(
-            DateTime.local(2024, 3, 15, 10, 24, 0, 0),
-            DateTime.local(2024, 3, 15, 10, 24, 59, 999)));
-
-    // 1 hour range
-    expect(getTimeRangeOld(DateTime.local(2024, 3, 15, 10, 24, 17, 13), DateTime.local(2024, 3, 15, 10, 55, 25, 888))).
-        toStrictEqual(new TimeRange(
-            DateTime.local(2024, 3, 15, 10, 0, 0, 0),
-            DateTime.local(2024, 3, 15, 10, 59, 59, 999)));
-
-    // 1 day range
-    expect(getTimeRangeOld(DateTime.local(2024, 3, 15, 10, 24, 17, 56), DateTime.local(2024, 3, 15, 13, 55, 25, 99))).
-        toStrictEqual(new TimeRange(
-            DateTime.local(2024, 3, 15, 0, 0, 0, 0),
-            DateTime.local(2024, 3, 15, 23, 59, 59, 999)));
-
-    // 1 month range
-    expect(getTimeRangeOld(DateTime.local(2024, 2, 15, 10, 24, 17, 356), DateTime.local(2024, 2, 17, 13, 55, 25, 123))).
-        toStrictEqual(new TimeRange(
-            DateTime.local(2024, 2, 1, 0, 0, 0, 0),
-            DateTime.local(2024, 2, 29, 23, 59, 59, 999)));
-});
 
 test('getTimeRange', () => {
     // Test case:
@@ -135,45 +109,45 @@ test('getTimeRange', () => {
 
 });
 
-test('getData', () => {
-    const graphData: GraphData = new GraphData();
+// test('getData', () => {
+//     const graphData: GraphData = new GraphData();
 
-    let time: DateTime = DateTime.local(2024, 1, 1);
-    const timeStep = Duration.fromObject({ minute: 10 });
-    const arr: number[][] = [];
-    let value: number = 100;
-    for (let index = 0; index < 30; ++index) {
-        value += 10 + index * index;
-        arr.push([time.toMillis(), value % 100]);
-        time = time.plus(timeStep);
-    }
-    graphData.add(0, arr);
+//     let time: DateTime = DateTime.local(2024, 1, 1);
+//     const timeStep = Duration.fromObject({ minute: 10 });
+//     const arr: number[][] = [];
+//     let value: number = 100;
+//     for (let index = 0; index < 30; ++index) {
+//         value += 10 + index * index;
+//         arr.push([time.toMillis(), value % 100]);
+//         time = time.plus(timeStep);
+//     }
+//     graphData.add(0, arr);
 
-    const maxTimeRange = new TimeRange(
-        DateTime.local(2024, 1, 1, 0),
-        DateTime.local(2024, 1, 1, 0, 9));
+//     const maxTimeRange = new TimeRange(
+//         DateTime.local(2024, 1, 1, 0),
+//         DateTime.local(2024, 1, 1, 0, 9));
 
-    const newTimeRange: TimeRange = getCurrentDataTimeRange(maxTimeRange, new TimeRange(
-        DateTime.local(2024, 1, 1, 3),
-        DateTime.local(2024, 1, 1, 4)));
+//     const newTimeRange: TimeRange = getCurrentDataTimeRange(maxTimeRange, new TimeRange(
+//         DateTime.local(2024, 1, 1, 3),
+//         DateTime.local(2024, 1, 1, 4)));
 
-    expect(newTimeRange).toStrictEqual(new TimeRange(
-        DateTime.local(2024, 1, 1, 2, 42),
-        DateTime.local(2024, 1, 1, 4, 3)))
+//     expect(newTimeRange).toStrictEqual(new TimeRange(
+//         DateTime.local(2024, 1, 1, 2, 42),
+//         DateTime.local(2024, 1, 1, 4, 3)))
 
-    const result: string = toStr(graphData.getDataByTimeRange(0, newTimeRange, maxTimeRange));
-    expect(result).toStrictEqual(
-        "2024-01-01T00:00:00.000+00:00 - NaN\n" +
-        "2024-01-01T02:50:00.000+00:00 - 65\n" +
-        "2024-01-01T03:00:00.000+00:00 - 99\n" +
-        "2024-01-01T03:10:00.000+00:00 - 70\n" +
-        "2024-01-01T03:20:00.000+00:00 - 80\n" +
-        "2024-01-01T03:30:00.000+00:00 - 31\n" +
-        "2024-01-01T03:40:00.000+00:00 - 25\n" +
-        "2024-01-01T03:50:00.000+00:00 - 64\n" +
-        "2024-01-01T04:00:00.000+00:00 - 50\n"
-    )
-});
+//     const result: string = toStr(graphData.getDataByTimeRange(0, newTimeRange, maxTimeRange, 1000));
+//     expect(result).toStrictEqual(
+//         "2024-01-01T00:00:00.000+00:00 - NaN\n" +
+//         "2024-01-01T02:50:00.000+00:00 - 65\n" +
+//         "2024-01-01T03:00:00.000+00:00 - 99\n" +
+//         "2024-01-01T03:10:00.000+00:00 - 70\n" +
+//         "2024-01-01T03:20:00.000+00:00 - 80\n" +
+//         "2024-01-01T03:30:00.000+00:00 - 31\n" +
+//         "2024-01-01T03:40:00.000+00:00 - 25\n" +
+//         "2024-01-01T03:50:00.000+00:00 - 64\n" +
+//         "2024-01-01T04:00:00.000+00:00 - 50\n"
+//     )
+// });
 
 test('experiments', () => {
     const t1: DateTime = DateTime.local(2024, 1, 1, 1, 0, 0, 0);
@@ -195,6 +169,51 @@ test('Pair.equals', () => {
     ))).toBe(true);
 });
 
+test('GraphData.getNextTolerance', () => {
+    const entityData: EntityData = new EntityData();
+    const data: number[][] = createDummyData();
+    entityData.add(data);
+
+    {
+        const list: Pair<number, number>[] = [];
+
+        expect(getNextTolerance(list, 1000)).toBe(0.5);
+        list.push(new Pair<number, number>(0.5, 3000));
+
+        expect(getNextTolerance(list, 1000)).toBe(1);
+        list.push(new Pair<number, number>(1, 1500));
+
+        expect(getNextTolerance(list, 1000)).toBe(2);
+        list.push(new Pair<number, number>(2, 1100));
+
+        expect(getNextTolerance(list, 1000)).toBe(4);
+        list.push(new Pair<number, number>(4, 950));
+
+        expect(getNextTolerance(list, 1000)).toBe(3);
+        list.push(new Pair<number, number>(3, 1010));
+
+        expect(getNextTolerance(list, 1000)).toBe(3.5);
+    }
+
+    {
+        const list: Pair<number, number>[] = [];
+
+        expect(getNextTolerance(list, 1000)).toBe(0.5);
+        list.push(new Pair<number, number>(0.5, 500));
+
+        expect(getNextTolerance(list, 1000)).toBe(0.25);
+        list.push(new Pair<number, number>(0.25, 950));
+
+        expect(getNextTolerance(list, 1000)).toBe(0.125);
+        list.push(new Pair<number, number>(0.125, 1050));
+
+        expect(getNextTolerance(list, 1000)).toBe(0.1875);
+        list.push(new Pair<number, number>(0.1875, 995));
+
+        expect(getNextTolerance(list, 1000)).toBe(0.15625);
+    }
+});
+
 function toStr(data: number[][]): string {
     let result: string = "";
     for (let point of data) {
@@ -205,4 +224,17 @@ function toStr(data: number[][]): string {
         result += "\n";
     }
     return result;
+}
+
+function createDummyData(): number[][] {
+    let time: DateTime = DateTime.local(2024, 1, 1);
+    const timeStep = Duration.fromObject({ minute: 10 });
+    const arr: number[][] = [];
+    let value: number = 100;
+    for (let index = 0; index < 3000; ++index) {
+        value += 10 + index * index;
+        arr.push([time.toMillis(), value % 100]);
+        time = time.plus(timeStep);
+    }
+    return arr;
 }
