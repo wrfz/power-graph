@@ -1,4 +1,5 @@
 node_modules
 .parcel-cache
 dist
-card.js.map
+power-graph.js.map
+package-lock.json

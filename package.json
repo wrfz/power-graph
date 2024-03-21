@@ -1,6 +1,6 @@
 {
     "source": "src/PowerGraph.ts",
-    "module": "card.js",
+    "module": "power-graph.js",
     "targets": {
         "module": {
             "includeNodeModules": [
