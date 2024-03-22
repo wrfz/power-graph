@@ -28,7 +28,7 @@ export class Graph {
     private _powerGraph: IPowerGraph;
     private _chart: echarts.EChartsType;
 
-    private _config: PowerGraphConfig;
+    private _globalConfig: PowerGraphConfig;
     private _graphConfig: GraphConfig;
     private _hass: HomeAssistant;
     private _card: HTMLElement;
@@ -44,7 +44,7 @@ export class Graph {
 
     constructor(powerGraph: IPowerGraph, graphConfig: GraphConfig) {
         this._powerGraph = powerGraph;
-        this._config = powerGraph.getConfig();
+        this._globalConfig = powerGraph.getConfig();
         this._graphConfig = graphConfig;
         this._requestInProgress = false;
         this._data = new GraphData();
@@ -57,10 +57,11 @@ export class Graph {
     }
 
     createContent(mainContener: Element): void {
-        console.log("Graph::createContent");
+        // console.log("Graph::createContent");
 
         this._card = document.createElement("ha-card");
         this._card.setAttribute("id", "chart-container");
+        this._card.style.height = this._graphConfig.getHeight() + "px";
 
         mainContener.append(this._card);
 
@@ -74,10 +75,10 @@ export class Graph {
     }
 
     private createChart(): void {
-        console.log("Graph::createChart: " + this._powerGraph.getTimeRange());
+        // console.log("Graph::createChart: " + this._powerGraph.getTimeRange());
         const thisGraph: Graph = this;
 
-        this._chart = echarts.init(this._card, null, { renderer: this._config.renderer });
+        this._chart = echarts.init(this._card, null, { renderer: this._globalConfig.renderer });
         this._chart.on('dataZoom', function (evt) { thisGraph.onScroll(evt); });
         this._chart.on('dblclick', function (evt) { thisGraph.onDoubleClick(evt); });
 
@@ -89,7 +90,7 @@ export class Graph {
         const smallDevice: boolean = clientArea.first * clientArea.second < 300000
 
         const options = {
-            animation: this._config.animation,
+            animation: this._globalConfig.animation,
             grid: {
                 left: '2%',
                 top: '3%',
@@ -125,7 +126,7 @@ export class Graph {
                 formatter: function (name: string): string {
                     const entityConfig: EntityConfig = thisGraph._graphConfig.getEntityByName(name);
                     const entityIndex: number = thisGraph._graphConfig.getEntityConfigIndex(entityConfig);
-                    const series: number[][] = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange(), thisGraph._config.numberOfPoints);
+                    const series: number[][] = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange(), thisGraph._globalConfig.numberOfPoints);
                     // console.error(`legend->formatter: ${thisGraph._dataTimeRange}`);
                     const value: number = series[series.length - 1][1];
                     return name + " (" + value + " " + thisGraph._powerGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
@@ -163,7 +164,7 @@ export class Graph {
                 // }
             ]
         };
-        if (this._config.showTooltip) {
+        if (this._globalConfig.showTooltip) {
             mergeDeep(options, {
                 tooltip: {
                     trigger: 'axis',
@@ -205,7 +206,7 @@ export class Graph {
                 }
             });
         }
-        if (this._config.showInfo) {
+        if (this._globalConfig.showInfo) {
             mergeDeep(options, {
                 graphic: {
                     id: 'info',
@@ -221,17 +222,17 @@ export class Graph {
                 }
             });
         }
-        if (this._config.title) {
+        if (this._globalConfig.title) {
             mergeDeep(options, {
                 title: {
                     show: true,
-                    text: this._config.title
+                    text: this._globalConfig.title
                 }
             });
         }
         this._lastOption = options;
         this._chart.setOption(options);
-        if (this._config.logOptions) {
+        if (this._globalConfig.logOptions) {
             console.log("setOptions: " + JSON.stringify(options));
         }
 
@@ -269,16 +270,16 @@ export class Graph {
 
             console.error("fix me!!!");
 
-            // if (startInPercent == 0) {
-            //     const endDate: DateTime = range.from.minus({ millisecond: 1 })
-            //     this._range = new TimeRange(endDate.minus({ hours: 24 }), endDate);
-            // } else {
-            //     this._range = new TimeRange(range.to, DateTime.local());
-            // }
+            if (startInPercent == 0) {
+                const endDate: DateTime = range.from.minus({ millisecond: 1 })
+                // this._range = new TimeRange(endDate.minus({ hours: 24 }), endDate);
+            } else {
+                // this._range = new TimeRange(range.to, DateTime.local());
+            }
         }
 
-        // console.log(`requestData(entities: ${this._config.entities.length}, range: ${this._range} `);
-        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
+        // console.log(`requestData(entities: ${this._globalConfig.entities.length}, range: ${this._range} `);
+        // console.log(`requestData(entities: ${this._globalConfig.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
 
         const request = {
             type: "history/history_during_period",
@@ -349,9 +350,9 @@ export class Graph {
 
         this.updateOptions(options);
 
-        if (isNumber(this._config.autorefresh) && this._tid == null) {
+        if (isNumber(this._globalConfig.autorefresh) && this._tid == null) {
             // console.log("setInterval");
-            //this._tid = setInterval(this.requestData.bind(this), +this._config.autorefresh * 1000);
+            //this._tid = setInterval(this.requestData.bind(this), +this._globalConfig.autorefresh * 1000);
         }
 
         this._requestInProgress = false;
@@ -364,8 +365,8 @@ export class Graph {
     }
 
     private updateOptions(options: echarts.EChartsCoreOption): void {
-        // console.info(`updateOptions: ${this._config.entities.length} >>`);
-        const config: PowerGraphConfig = this._config;
+        // console.info(`updateOptions: ${this._globalConfig.entities.length} >>`);
+        const config: PowerGraphConfig = this._globalConfig;
 
         const maxTimeRange: TimeRange = this._data.getMaxTimeRange();
         const displayedTimeRange: TimeRange = this.getDisplayedTimeRange();
@@ -378,12 +379,12 @@ export class Graph {
 
         let points = 0;
         let info = "";
-        if (this._config.showInfo) {
+        if (this._globalConfig.showInfo) {
             const clientArea: Pair<number, number> = this._powerGraph.getClientArea();
             // info += `Current time: ${DateTime.local().toISO()}\n`;
             info += `Size: ${clientArea.first} x ${clientArea.second} \n`;
-            info += `Renderer: ${this._config.renderer} \n`;
-            info += `Sampling: ${this._config.sampling} \n`;
+            info += `Renderer: ${this._globalConfig.renderer} \n`;
+            info += `Sampling: ${this._globalConfig.sampling} \n`;
             info += '\n';
             info += `maxTimeRange:           ${maxTimeRange}\n`;
             info += `displayedTimeRange: ${displayedTimeRange}\n`;
@@ -395,7 +396,7 @@ export class Graph {
         this._series = [];
         for (const entityConfig of this._graphConfig.entities) {
             const entityIndex: number = this._graphConfig.getEntityConfigIndex(entityConfig);
-            const series: number[][] = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange(), this._config.numberOfPoints);
+            const series: number[][] = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange(), this._globalConfig.numberOfPoints);
 
             points += series.length;
             info += `   ${entityConfig.entity}: ${series.length} \n`;
@@ -425,7 +426,7 @@ export class Graph {
             if (entityConfig.fillColor) {
                 mergeDeep(line, { areaStyle: { color: entityConfig.fillColor } });
             }
-            if (this._config.shadow || entityConfig.shadow) {
+            if (this._globalConfig.shadow || entityConfig.shadow) {
                 Object.assign(line, {
                     lineStyle: {
                         width: 3,
@@ -435,10 +436,10 @@ export class Graph {
                     }
                 });
             }
-            if (this._config.sampling) {
+            if (this._globalConfig.sampling) {
                 mergeDeep(line, { sampling: 'lttb' });
             }
-            if (this._config.fillAread) {
+            if (this._globalConfig.fillAread) {
                 mergeDeep(line, { areaStyle: {} });
             }
 
@@ -451,7 +452,7 @@ export class Graph {
             });
         }
 
-        if (this._config.showInfo) {
+        if (this._globalConfig.showInfo) {
             info += `   sum: ${points} `;
             mergeDeep(options, {
                 graphic: {
@@ -465,7 +466,7 @@ export class Graph {
 
         this._lastOption = options;
         this._chart.setOption(options);
-        if (this._config.logOptions) {
+        if (this._globalConfig.logOptions) {
             console.log("setOptions: " + JSON.stringify(options));
         }
         // console.info("updateOptions <<");
@@ -478,31 +479,13 @@ export class Graph {
      */
     private getDisplayedTimeRange(): TimeRange {
         const range: TimeRange = this._data.getMaxTimeRange();
-        // const range: TimeRange = this._dataTimeRange != null ? this._dataTimeRange : this._data.getTimeRange();
-        // console.log("range: " + range);
-
-
         const option: echarts.EChartsCoreOption = this._chart.getOption();
         const dataZoom: any[] = option.dataZoom as any[];
-        const startInPercent = dataZoom[0].start;
-        const endInPercent = dataZoom[0].end;
 
-        if (isNumber(startInPercent) && isNumber(endInPercent)) {
-            // console.log(dataZoom);
-            // console.log("startInPercent: " + startInPercent);
-            // console.log("endInPercent: " + endInPercent);
-            // console.log("range: " + range);
-
-            return new TimeRange(
-                DateTime.fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * startInPercent / 100)),
-                DateTime.fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * endInPercent / 100))
-            );
-        } else {
-            console.error("else case");
-            const option: echarts.EChartsCoreOption = this._lastOption;
-            const dataZoom: any[] = option.dataZoom as any[];
-            return new TimeRange(DateTime.fromMillis(dataZoom[0].startValue), DateTime.fromMillis(dataZoom[0].endValue));
-        }
+        return new TimeRange(
+            DateTime.fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].start / 100)),
+            DateTime.fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].end / 100))
+        );
     }
 
     private displayTimeRangeToPercent(maxTimeRange: TimeRange, displayedTimeRange: TimeRange): Pair<number, number> {
@@ -513,7 +496,7 @@ export class Graph {
     }
 
     resize(): void {
-        console.log("Graph::resize");
+        // console.log("Graph::resize");
         if (this._chart == null) {
             // Create chart when the card size is known
             this.createChart();

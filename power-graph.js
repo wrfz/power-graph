@@ -38467,7 +38467,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         this._series = [];
         this._ctrlPressed = false;
         this._powerGraph = powerGraph;
-        this._config = powerGraph.getConfig();
+        this._globalConfig = powerGraph.getConfig();
         this._graphConfig = graphConfig;
         this._requestInProgress = false;
         this._data = new (0, $53eba6098f86b86c$export$804ce8cdc3ef0047)();
@@ -38477,9 +38477,10 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         this._hass = hass;
     }
     createContent(mainContener) {
-        console.log("Graph::createContent");
+        // console.log("Graph::createContent");
         this._card = document.createElement("ha-card");
         this._card.setAttribute("id", "chart-container");
+        this._card.style.height = this._graphConfig.getHeight() + "px";
         mainContener.append(this._card);
         const thisGraph = this;
         // window.onkeydown = function (event) { thisGraph.onKeyDown(event); }
@@ -38492,10 +38493,10 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         }, false);
     }
     createChart() {
-        console.log("Graph::createChart: " + this._powerGraph.getTimeRange());
+        // console.log("Graph::createChart: " + this._powerGraph.getTimeRange());
         const thisGraph = this;
         this._chart = $5f4351e0b7aaad84$export$2cd8252107eb640b(this._card, null, {
-            renderer: this._config.renderer
+            renderer: this._globalConfig.renderer
         });
         this._chart.on("dataZoom", function(evt) {
             thisGraph.onScroll(evt);
@@ -38509,7 +38510,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         const clientArea = this._powerGraph.getClientArea();
         const smallDevice = clientArea.first * clientArea.second < 300000;
         const options = {
-            animation: this._config.animation,
+            animation: this._globalConfig.animation,
             grid: {
                 left: "2%",
                 top: "3%",
@@ -38545,7 +38546,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
                 formatter: function(name) {
                     const entityConfig = thisGraph._graphConfig.getEntityByName(name);
                     const entityIndex = thisGraph._graphConfig.getEntityConfigIndex(entityConfig);
-                    const series = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange(), thisGraph._config.numberOfPoints);
+                    const series = thisGraph._data.getDataByTimeRange(entityIndex, thisGraph._dataTimeRange, thisGraph._data.getMaxTimeRange(), thisGraph._globalConfig.numberOfPoints);
                     // console.error(`legend->formatter: ${thisGraph._dataTimeRange}`);
                     const value = series[series.length - 1][1];
                     return name + " (" + value + " " + thisGraph._powerGraph.getUnitOfMeasurement(entityConfig.entity) + ")";
@@ -38561,7 +38562,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
                 }
             ]
         };
-        if (this._config.showTooltip) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
+        if (this._globalConfig.showTooltip) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
             tooltip: {
                 trigger: "axis",
                 triggerOn: smallDevice ? "click" : "mousemove|click",
@@ -38600,7 +38601,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
                 }
             }
         });
-        if (this._config.showInfo) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
+        if (this._globalConfig.showInfo) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
             graphic: {
                 id: "info",
                 type: "text",
@@ -38614,15 +38615,15 @@ class $e866791a01b6c100$export$614db49f3febe941 {
                 }
             }
         });
-        if (this._config.title) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
+        if (this._globalConfig.title) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
             title: {
                 show: true,
-                text: this._config.title
+                text: this._globalConfig.title
             }
         });
         this._lastOption = options;
         this._chart.setOption(options);
-        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+        if (this._globalConfig.logOptions) console.log("setOptions: " + JSON.stringify(options));
         const option = this._chart.getOption();
         const dataZoom = option.dataZoom;
         // console.log(dataZoom);
@@ -38647,15 +38648,15 @@ class $e866791a01b6c100$export$614db49f3febe941 {
             const startInPercent = dataZoom[0].start;
             const range = this._data.getMaxTimeRange();
             console.error("fix me!!!");
-        // if (startInPercent == 0) {
-        //     const endDate: DateTime = range.from.minus({ millisecond: 1 })
-        //     this._range = new TimeRange(endDate.minus({ hours: 24 }), endDate);
-        // } else {
-        //     this._range = new TimeRange(range.to, DateTime.local());
-        // }
+            if (startInPercent == 0) {
+                const endDate = range.from.minus({
+                    millisecond: 1
+                });
+            // this._range = new TimeRange(endDate.minus({ hours: 24 }), endDate);
+            }
         }
-        // console.log(`requestData(entities: ${this._config.entities.length}, range: ${this._range} `);
-        // console.log(`requestData(entities: ${this._config.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
+        // console.log(`requestData(entities: ${this._globalConfig.entities.length}, range: ${this._range} `);
+        // console.log(`requestData(entities: ${this._globalConfig.entities.length}, start: ${this._range.start.toUnixInteger()}, end: ${this._range.end.toUnixInteger()} `);
         const request = {
             type: "history/history_during_period",
             start_time: this._powerGraph.getTimeRange().from.toISO(),
@@ -38712,7 +38713,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
             }
         };
         this.updateOptions(options);
-        (0, $44e3098839051485$export$7e4aa119212bc614)(this._config.autorefresh) && this._tid;
+        (0, $44e3098839051485$export$7e4aa119212bc614)(this._globalConfig.autorefresh) && this._tid;
         this._requestInProgress = false;
     // console.log("responseData <<")
     }
@@ -38721,8 +38722,8 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         console.error(error);
     }
     updateOptions(options) {
-        // console.info(`updateOptions: ${this._config.entities.length} >>`);
-        const config = this._config;
+        // console.info(`updateOptions: ${this._globalConfig.entities.length} >>`);
+        const config = this._globalConfig;
         const maxTimeRange = this._data.getMaxTimeRange();
         const displayedTimeRange = this.getDisplayedTimeRange();
         const lastDataTimeRange = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(this._dataTimeRange);
@@ -38732,12 +38733,12 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         const dataChanged = !lastDataTimeRange.equals(this._dataTimeRange);
         let points = 0;
         let info = "";
-        if (this._config.showInfo) {
+        if (this._globalConfig.showInfo) {
             const clientArea = this._powerGraph.getClientArea();
             // info += `Current time: ${DateTime.local().toISO()}\n`;
             info += `Size: ${clientArea.first} x ${clientArea.second} \n`;
-            info += `Renderer: ${this._config.renderer} \n`;
-            info += `Sampling: ${this._config.sampling} \n`;
+            info += `Renderer: ${this._globalConfig.renderer} \n`;
+            info += `Sampling: ${this._globalConfig.sampling} \n`;
             info += "\n";
             info += `maxTimeRange:           ${maxTimeRange}\n`;
             info += `displayedTimeRange: ${displayedTimeRange}\n`;
@@ -38749,7 +38750,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         this._series = [];
         for (const entityConfig of this._graphConfig.entities){
             const entityIndex = this._graphConfig.getEntityConfigIndex(entityConfig);
-            const series = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange(), this._config.numberOfPoints);
+            const series = this._data.getDataByTimeRange(entityIndex, this._dataTimeRange, this._data.getMaxTimeRange(), this._globalConfig.numberOfPoints);
             points += series.length;
             info += `   ${entityConfig.entity}: ${series.length} \n`;
             info += `   min-max: ${new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(series[0][0]), (0, $c70e8820d152b235$exports.DateTime).fromMillis(series[series.length - 1][0]))} \n`;
@@ -38780,7 +38781,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
                     color: entityConfig.fillColor
                 }
             });
-            if (this._config.shadow || entityConfig.shadow) Object.assign(line, {
+            if (this._globalConfig.shadow || entityConfig.shadow) Object.assign(line, {
                 lineStyle: {
                     width: 3,
                     shadowColor: "rgba(0,0,0,0.3)",
@@ -38788,10 +38789,10 @@ class $e866791a01b6c100$export$614db49f3febe941 {
                     shadowOffsetY: 8
                 }
             });
-            if (this._config.sampling) (0, $44e3098839051485$export$dd702b3c8240390c)(line, {
+            if (this._globalConfig.sampling) (0, $44e3098839051485$export$dd702b3c8240390c)(line, {
                 sampling: "lttb"
             });
-            if (this._config.fillAread) (0, $44e3098839051485$export$dd702b3c8240390c)(line, {
+            if (this._globalConfig.fillAread) (0, $44e3098839051485$export$dd702b3c8240390c)(line, {
                 areaStyle: {}
             });
             this._series.push(line);
@@ -38799,7 +38800,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         if (dataChanged) (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
             series: this._series
         });
-        if (this._config.showInfo) {
+        if (this._globalConfig.showInfo) {
             info += `   sum: ${points} `;
             (0, $44e3098839051485$export$dd702b3c8240390c)(options, {
                 graphic: {
@@ -38812,7 +38813,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         }
         this._lastOption = options;
         this._chart.setOption(options);
-        if (this._config.logOptions) console.log("setOptions: " + JSON.stringify(options));
+        if (this._globalConfig.logOptions) console.log("setOptions: " + JSON.stringify(options));
     // console.info("updateOptions <<");
     }
     /**
@@ -38820,30 +38821,16 @@ class $e866791a01b6c100$export$614db49f3febe941 {
      * @returns Time range {@TimeRange}
      */ getDisplayedTimeRange() {
         const range = this._data.getMaxTimeRange();
-        // const range: TimeRange = this._dataTimeRange != null ? this._dataTimeRange : this._data.getTimeRange();
-        // console.log("range: " + range);
         const option = this._chart.getOption();
         const dataZoom = option.dataZoom;
-        const startInPercent = dataZoom[0].start;
-        const endInPercent = dataZoom[0].end;
-        if ((0, $44e3098839051485$export$7e4aa119212bc614)(startInPercent) && (0, $44e3098839051485$export$7e4aa119212bc614)(endInPercent)) // console.log(dataZoom);
-        // console.log("startInPercent: " + startInPercent);
-        // console.log("endInPercent: " + endInPercent);
-        // console.log("range: " + range);
-        return new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * startInPercent / 100)), (0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * endInPercent / 100)));
-        else {
-            console.error("else case");
-            const option = this._lastOption;
-            const dataZoom = option.dataZoom;
-            return new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(dataZoom[0].startValue), (0, $c70e8820d152b235$exports.DateTime).fromMillis(dataZoom[0].endValue));
-        }
+        return new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].start / 100)), (0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].end / 100)));
     }
     displayTimeRangeToPercent(maxTimeRange, displayedTimeRange) {
         const range = maxTimeRange.to.toMillis() - maxTimeRange.from.toMillis();
         return new (0, $53eba6098f86b86c$export$d63d7cff08fe4dc9)(100.0 * displayedTimeRange.from.diff(maxTimeRange.from).toMillis() / range, 100.0 * displayedTimeRange.to.diff(maxTimeRange.from).toMillis() / range);
     }
     resize() {
-        console.log("Graph::resize");
+        // console.log("Graph::resize");
         if (this._chart == null) // Create chart when the card size is known
         this.createChart();
         // console.log(`resize(${ this._card.clientWidth }, ${ this._card.clientHeight })`)
@@ -38917,6 +38904,9 @@ class $e866791a01b6c100$export$614db49f3febe941 {
 
 
 class $c646df2793882bac$export$566c11bd98e80427 {
+    constructor(globalConfig){
+        this._globalConfig = globalConfig;
+    }
     validate() {
         if (!this.entities) throw new Error("Please define an entity!");
     }
@@ -38943,6 +38933,9 @@ class $c646df2793882bac$export$566c11bd98e80427 {
         }
         throw Error("Entity config not found: " + entityConfig.entity);
     }
+    getHeight() {
+        return this.height != null ? this.height : this._globalConfig.height;
+    }
 }
 class $c646df2793882bac$export$dc790a03cd43345e {
     constructor(obj){
@@ -38955,6 +38948,7 @@ class $c646df2793882bac$export$dc790a03cd43345e {
         this.showInfo = false;
         this.logOptions = false;
         this.numberOfPoints = 1000;
+        this.height = 500;
         // for (const key in obj) {
         //     if (!this.hasOwnProperty(key)) {
         //         throw new Error('Unsupported key: ' + key);
@@ -38963,7 +38957,7 @@ class $c646df2793882bac$export$dc790a03cd43345e {
         obj && Object.assign(this, obj);
         const newGraphConfigs = [];
         for (const graphConfig of this.graphs){
-            const newGraphConfig = new $c646df2793882bac$export$566c11bd98e80427();
+            const newGraphConfig = new $c646df2793882bac$export$566c11bd98e80427(this);
             Object.assign(newGraphConfig, graphConfig);
             newGraphConfigs.push(newGraphConfig);
         }
@@ -67321,7 +67315,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         return this._config;
     }
     createContent() {
-        console.log("PowerGraph::createContent");
+        // console.log("PowerGraph::createContent");
         const thisGraph = this;
         this._mainContener = document.createElement("div");
         this._mainContener.setAttribute("id", "main-container");
@@ -67332,7 +67326,6 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         _style.textContent = `
             #chart-container {
                 width: 100%;
-                height: 500px;
             }
             #infoBox {
                 background-color: black;
@@ -67358,7 +67351,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         this._range = timeRange;
     }
     resize() {
-        console.log("PowerGraph::resize");
+        // console.log("PowerGraph::resize");
         for (const graph of this._graphs)graph.resize();
     }
     getCardSize() {

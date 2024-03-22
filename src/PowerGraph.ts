@@ -116,7 +116,7 @@ class PowerGraph extends HTMLElement implements IPowerGraph {
     }
 
     private createContent(): void {
-        console.log("PowerGraph::createContent");
+        // console.log("PowerGraph::createContent");
 
         const thisGraph: PowerGraph = this;
 
@@ -134,7 +134,6 @@ class PowerGraph extends HTMLElement implements IPowerGraph {
         _style.textContent = `
             #chart-container {
                 width: 100%;
-                height: 500px;
             }
             #infoBox {
                 background-color: black;
@@ -161,7 +160,7 @@ class PowerGraph extends HTMLElement implements IPowerGraph {
     }
 
     resize(): void {
-        console.log("PowerGraph::resize");
+        // console.log("PowerGraph::resize");
         for (const graph of this._graphs) {
             graph.resize();
         }

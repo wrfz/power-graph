@@ -1,7 +1,21 @@
 import { CanvasRenderer } from 'echarts/renderers';
 
+export interface EntityConfig {
+    entity: string;
+    name: string;
+    shadow: boolean;
+    color: string;
+    fillColor: string;
+};
+
 export class GraphConfig {
+    private _globalConfig: PowerGraphConfig;
     entities: EntityConfig[];
+    private height: number;
+
+    constructor(globalConfig: PowerGraphConfig) {
+        this._globalConfig = globalConfig;
+    }
 
     validate(): void {
         if (!this.entities) {
@@ -41,14 +55,10 @@ export class GraphConfig {
         }
         throw Error("Entity config not found: " + entityConfig.entity);
     }
-};
 
-export interface EntityConfig {
-    entity: string;
-    name: string;
-    shadow: boolean;
-    color: string;
-    fillColor: string;
+    getHeight(): number {
+        return this.height != null ? this.height : this._globalConfig.height;
+    }
 };
 
 export class PowerGraphConfig {
@@ -67,6 +77,7 @@ export class PowerGraphConfig {
     logOptions: boolean = false;
     qualities: number[];
     numberOfPoints: number = 1000;
+    height: number = 500;
 
     constructor(obj: any) {
         // for (const key in obj) {
@@ -79,7 +90,7 @@ export class PowerGraphConfig {
 
         const newGraphConfigs: GraphConfig[] = [];
         for (const graphConfig of this.graphs) {
-            const newGraphConfig: GraphConfig = new GraphConfig();
+            const newGraphConfig: GraphConfig = new GraphConfig(this);
             Object.assign(newGraphConfig, graphConfig);
             newGraphConfigs.push(newGraphConfig);
         }
