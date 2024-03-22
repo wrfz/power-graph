@@ -176,19 +176,10 @@ export class EntityData {
 
 export class GraphData {
     private _entityData: EntityData[];
-    private _qualities: number[];
     private _timeRange: TimeRange = new TimeRange(DateTime.local(3000), DateTime.local(1980));
 
     constructor() {
         this._entityData = [];
-    }
-
-    setQualities(qualities: number[]): void {
-        this._qualities = qualities;
-    }
-
-    getQualities(): number[] {
-        return this._qualities;
     }
 
     hasData(): boolean {
