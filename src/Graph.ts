@@ -136,7 +136,7 @@ export class Graph {
                 {
                     type: 'inside',
                     filterMode: 'none',
-                    zoomLock: !smallDevice,
+                    zoomLock: !this._powerGraph.isMobile(),
                     start: 50,
                     end: 100
                     // zoomOnMouseWheel: smallDevice ? true : 'ctrl',
@@ -382,6 +382,7 @@ export class Graph {
         if (this._globalConfig.showInfo) {
             const clientArea: Pair<number, number> = this._powerGraph.getClientArea();
             // info += `Current time: ${DateTime.local().toISO()}\n`;
+            info += `IsMobile: ${this._powerGraph.isMobile()}\n`;
             info += `Size: ${clientArea.first} x ${clientArea.second} \n`;
             info += `Renderer: ${this._globalConfig.renderer} \n`;
             info += `Sampling: ${this._globalConfig.sampling} \n`;
