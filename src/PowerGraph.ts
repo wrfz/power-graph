@@ -11,7 +11,7 @@ import {
 
 import { Graph } from './Graph'
 import { PowerGraphConfig, GraphConfig, EntityConfig } from './GraphConfig';
-import { Pair, TimeRange, GraphData, getCurrentDataTimeRange } from './GraphData'
+import { Pair, TimeRange } from './GraphData'
 import { mergeDeep, isNumber, toNumber, DateTimeUtils } from './utils';
 
 import * as echarts from 'echarts/core';
@@ -68,12 +68,14 @@ declare global {
 }
 
 export interface IPowerGraph {
+    onGraphCreated(): void;
     getConfig(): PowerGraphConfig;
     getUnitOfMeasurement(entityId: string): string;
     getTimeRange(): TimeRange;
     setTimeRange(timeRange: TimeRange): void;
     getClientArea(): Pair<number, number>;
     isMobile(): boolean;
+    scrollGraph(graph: Graph, startEnd: Pair<number, number>): void;
 }
 
 class PowerGraph extends HTMLElement implements IPowerGraph {
@@ -141,7 +143,7 @@ class PowerGraph extends HTMLElement implements IPowerGraph {
 
         var _style: Element = document.createElement("style");
         _style.textContent = `
-            #chart-container {
+            .chart-container {
                 width: 100%;
             }
             #infoBox {
@@ -158,6 +160,28 @@ class PowerGraph extends HTMLElement implements IPowerGraph {
             `
         this.attachShadow({ mode: "open" });
         this.shadowRoot!.append(_style, this._mainContener/*, this._infoBox*/);
+    }
+
+    onGraphCreated(): void {
+        const charts: any[] = [];
+        // let allCreated: boolean = this._graphs.length > 0;
+        for (const graph of this._graphs) {
+            const chart: echarts.EChartsType = graph.getChart();
+            if (chart != null) {
+                charts.push(chart);
+            } else {
+                return;
+            }
+            // if (!graph.isCreated()) {
+            //     allCreated = false;
+            //     break;
+            // }
+        }
+        // console.log("PowerGraph::connect: " + charts.length);
+        // echarts.connect(charts);
+        // if (allCreated) {
+        //     echarts.connect([chart1, chart2]);
+        // }
     }
 
     getTimeRange(): TimeRange {
@@ -223,6 +247,14 @@ class PowerGraph extends HTMLElement implements IPowerGraph {
 
     isMobile(): boolean {
         return this._isMobile;
+    }
+
+    scrollGraph(touchedGraph: Graph, startEnd: Pair<number, number>): void {
+        for (const graph of this._graphs) {
+            if (graph != touchedGraph) {
+                graph.scrollGraph(startEnd);
+            }
+        }
     }
 
     connectedCallback(): void {

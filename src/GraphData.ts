@@ -176,7 +176,7 @@ export class EntityData {
 
 export class GraphData {
     private _entityData: EntityData[];
-    private _timeRange: TimeRange = new TimeRange(DateTime.local(3000), DateTime.local(1980));
+    private _timeRange: TimeRange = new TimeRange(DateTime.local(1980), DateTime.local(2024));
 
     constructor() {
         this._entityData = [];

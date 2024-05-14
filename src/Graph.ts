@@ -41,6 +41,7 @@ export class Graph {
     private _lastOption: any;
     private _series: any[] = [];
     private _ctrlPressed: boolean = false;
+    private _scrollInProgress: boolean = false;
 
     constructor(powerGraph: IPowerGraph, graphConfig: GraphConfig) {
         this._powerGraph = powerGraph;
@@ -60,7 +61,7 @@ export class Graph {
         // console.log("Graph::createContent");
 
         this._card = document.createElement("ha-card");
-        this._card.setAttribute("id", "chart-container");
+        this._card.setAttribute("class", "chart-container");
         this._card.style.height = this._graphConfig.getHeight() + "px";
 
         mainContener.append(this._card);
@@ -74,13 +75,23 @@ export class Graph {
         document.addEventListener('keyup', function (event) { thisGraph.onKeyUp(event); }, false);
     }
 
+    isCreated(): boolean {
+        return this._chart != null;
+    }
+
+    getChart(): echarts.EChartsType {
+        return this._chart;
+    }
+
     private createChart(): void {
         // console.log("Graph::createChart: " + this._powerGraph.getTimeRange());
         const thisGraph: Graph = this;
 
         this._chart = echarts.init(this._card, null, { renderer: this._globalConfig.renderer });
+        this._chart.group = 'ChartGroup';
         this._chart.on('dataZoom', function (evt) { thisGraph.onScroll(evt); });
-        this._chart.on('dblclick', function (evt) { thisGraph.onDoubleClick(evt); });
+        this._chart.on('dblclick', function (evt) { console.error("Graph::dbl"); thisGraph.onDoubleClick(evt); });
+        this._chart.on('pointerdown', function (evt) { console.error("Graph::pointerdown"); thisGraph.onPointerDown(evt); });
 
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
@@ -137,6 +148,7 @@ export class Graph {
                     type: 'inside',
                     filterMode: 'none',
                     zoomLock: !this._powerGraph.isMobile(),
+                    throttle: 1,
                     start: 50,
                     end: 100
                     // zoomOnMouseWheel: smallDevice ? true : 'ctrl',
@@ -233,12 +245,8 @@ export class Graph {
         this._lastOption = options;
         this._chart.setOption(options);
         if (this._globalConfig.logOptions) {
-            console.log("setOptions: " + JSON.stringify(options));
+            console.log("Graph::setOptions: " + JSON.stringify(options));
         }
-
-        const option: echarts.EChartsCoreOption = this._chart.getOption();
-        const dataZoom: any[] = option.dataZoom as any[];
-        // console.log(dataZoom);
 
         const millisecondsDiff: number = this._powerGraph.getTimeRange().to.diff(this._powerGraph.getTimeRange().from).toMillis() * 3;
         const diff: Duration = Duration.fromMillis(millisecondsDiff);
@@ -246,6 +254,8 @@ export class Graph {
         const endTime: DateTime = this._powerGraph.getTimeRange().to;
 
         this._powerGraph.setTimeRange(new TimeRange(startTime, endTime));
+
+        this._powerGraph.onGraphCreated();
 
         this.requestData();
     }
@@ -365,12 +375,13 @@ export class Graph {
     }
 
     private updateOptions(options: echarts.EChartsCoreOption): void {
-        // console.info(`updateOptions: ${this._globalConfig.entities.length} >>`);
+        // console.info(`updateOptions: ${this._graphConfig.entities.length} >>`);
         const config: PowerGraphConfig = this._globalConfig;
 
         const maxTimeRange: TimeRange = this._data.getMaxTimeRange();
         const displayedTimeRange: TimeRange = this.getDisplayedTimeRange();
         const lastDataTimeRange = new TimeRange(this._dataTimeRange);
+        // console.info(`updateOptions: maxTimeRange = ${maxTimeRange}, displayedTimeRange = ${displayedTimeRange}`);
         this._dataTimeRange = getCurrentDataTimeRange(maxTimeRange, displayedTimeRange);
         const displayedTimeRangeInPercent: Pair<number, number> = this.displayTimeRangeToPercent(this._dataTimeRange, displayedTimeRange);
         // console.log(`percent range: ${displayedTimeRangeInPercent}`);
@@ -506,40 +517,53 @@ export class Graph {
         this._chart.resize();
     }
 
-    private onScroll(event: any) {
-        //console.log(event);
-        //const option = this._chart.getOption();
-        //const dataZoom: any[] = option.dataZoom as any[];
-        const { start, end } = event
-        localStorage.setItem("dataZoom.startTime", start);
-        //localStorage.setItem("dataZoom.endTime", endTime);
+    onScroll(event: any) {
+        if (!this._scrollInProgress) {
+            // console.log("onScroll");
 
-        //console.log(dataZoom);
-        //console.log(event);
+            this._scrollInProgress = true;
 
-        // Scroll other charts
-        // var zoom = myChart.getOption().dataZoom[0];
-        // myOtherChart.dispatchAction({
-        //     type: 'dataZoom',
-        //     dataZoomIndex: 0,
-        //     startValue: zoom.startValue,
-        //     endValue: zoom.endValue
-        // });
+            this.handleCtrl();
 
-        if (start === 0) {
-            this.requestData();
-        } else {
-            this.updateOptions({});
+            const { start, end } = event
+            localStorage.setItem("dataZoom.startTime", start);
+            //localStorage.setItem("dataZoom.endTime", endTime);
+
+            //console.log(dataZoom);
+            //console.log(event);
+
+            // this._powerGraph.scrollGraph(this, new Pair<number, number>(start, end));
+
+            if (start === 0) {
+                this.requestData();
+            } else {
+                this.updateOptions({});
+            }
+            this._scrollInProgress = false;
         }
     }
 
-    private onDoubleClick(event: any) {
+    scrollGraph(startEnd: Pair<number, number>): void {
+        console.log("scrollGraph");
+        this._chart.dispatchAction({
+            type: 'dataZoom',
+            dataZoomIndex: 0,
+            startValue: startEnd.first,
+            endValue: startEnd.second
+        });
+    }
+
+    private onDoubleClick(event: any): void {
         console.log("onDoubleClick");
         this._chart.dispatchAction({
             type: "takeGlobalCursor",
             key: "dataZoomSelect",
             dataZoomSelectActive: true
         });
+    }
+
+    onPointerDown(event: any): void {
+        console.error("Graph::onPointerDown");
     }
 
     private clearRefreshInterval(): void {
@@ -567,6 +591,8 @@ export class Graph {
     }
 
     private handleCtrl() {
+        // console.log("Graph::handleCtrl");
+
         // Toggle zoomLock
         const option: echarts.EChartsCoreOption = this._chart.getOption();
         const dataZoom = option.dataZoom as DataZoomComponentOption[];

@@ -38379,7 +38379,7 @@ class $53eba6098f86b86c$export$1402489b11e44f0c {
 }
 class $53eba6098f86b86c$export$804ce8cdc3ef0047 {
     constructor(){
-        this._timeRange = new $53eba6098f86b86c$export$74e1c7e2f1829413((0, $c70e8820d152b235$exports.DateTime).local(3000), (0, $c70e8820d152b235$exports.DateTime).local(1980));
+        this._timeRange = new $53eba6098f86b86c$export$74e1c7e2f1829413((0, $c70e8820d152b235$exports.DateTime).local(1980), (0, $c70e8820d152b235$exports.DateTime).local(2024));
         this._entityData = [];
     }
     hasData() {
@@ -38466,6 +38466,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         this._tid = null;
         this._series = [];
         this._ctrlPressed = false;
+        this._scrollInProgress = false;
         this._powerGraph = powerGraph;
         this._globalConfig = powerGraph.getConfig();
         this._graphConfig = graphConfig;
@@ -38479,7 +38480,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
     createContent(mainContener) {
         // console.log("Graph::createContent");
         this._card = document.createElement("ha-card");
-        this._card.setAttribute("id", "chart-container");
+        this._card.setAttribute("class", "chart-container");
         this._card.style.height = this._graphConfig.getHeight() + "px";
         mainContener.append(this._card);
         const thisGraph = this;
@@ -38492,17 +38493,29 @@ class $e866791a01b6c100$export$614db49f3febe941 {
             thisGraph.onKeyUp(event);
         }, false);
     }
+    isCreated() {
+        return this._chart != null;
+    }
+    getChart() {
+        return this._chart;
+    }
     createChart() {
         // console.log("Graph::createChart: " + this._powerGraph.getTimeRange());
         const thisGraph = this;
         this._chart = $5f4351e0b7aaad84$export$2cd8252107eb640b(this._card, null, {
             renderer: this._globalConfig.renderer
         });
+        this._chart.group = "ChartGroup";
         this._chart.on("dataZoom", function(evt) {
             thisGraph.onScroll(evt);
         });
         this._chart.on("dblclick", function(evt) {
+            console.error("Graph::dbl");
             thisGraph.onDoubleClick(evt);
+        });
+        this._chart.on("pointerdown", function(evt) {
+            console.error("Graph::pointerdown");
+            thisGraph.onPointerDown(evt);
         });
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
@@ -38557,6 +38570,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
                     type: "inside",
                     filterMode: "none",
                     zoomLock: !this._powerGraph.isMobile(),
+                    throttle: 1,
                     start: 50,
                     end: 100
                 }
@@ -38623,15 +38637,13 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         });
         this._lastOption = options;
         this._chart.setOption(options);
-        if (this._globalConfig.logOptions) console.log("setOptions: " + JSON.stringify(options));
-        const option = this._chart.getOption();
-        const dataZoom = option.dataZoom;
-        // console.log(dataZoom);
+        if (this._globalConfig.logOptions) console.log("Graph::setOptions: " + JSON.stringify(options));
         const millisecondsDiff = this._powerGraph.getTimeRange().to.diff(this._powerGraph.getTimeRange().from).toMillis() * 3;
         const diff = (0, $c70e8820d152b235$exports.Duration).fromMillis(millisecondsDiff);
         const startTime = this._powerGraph.getTimeRange().to.minus(diff);
         const endTime = this._powerGraph.getTimeRange().to;
         this._powerGraph.setTimeRange(new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(startTime, endTime));
+        this._powerGraph.onGraphCreated();
         this.requestData();
     }
     requestData() {
@@ -38722,11 +38734,12 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         console.error(error);
     }
     updateOptions(options) {
-        // console.info(`updateOptions: ${this._globalConfig.entities.length} >>`);
+        // console.info(`updateOptions: ${this._graphConfig.entities.length} >>`);
         const config = this._globalConfig;
         const maxTimeRange = this._data.getMaxTimeRange();
         const displayedTimeRange = this.getDisplayedTimeRange();
         const lastDataTimeRange = new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(this._dataTimeRange);
+        // console.info(`updateOptions: maxTimeRange = ${maxTimeRange}, displayedTimeRange = ${displayedTimeRange}`);
         this._dataTimeRange = (0, $53eba6098f86b86c$export$2a8ea63efc79099d)(maxTimeRange, displayedTimeRange);
         const displayedTimeRangeInPercent = this.displayTimeRangeToPercent(this._dataTimeRange, displayedTimeRange);
         // console.log(`percent range: ${displayedTimeRangeInPercent}`);
@@ -38838,24 +38851,29 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         this._chart.resize();
     }
     onScroll(event) {
-        //console.log(event);
-        //const option = this._chart.getOption();
-        //const dataZoom: any[] = option.dataZoom as any[];
-        const { start: start, end: end } = event;
-        localStorage.setItem("dataZoom.startTime", start);
-        //localStorage.setItem("dataZoom.endTime", endTime);
-        //console.log(dataZoom);
-        //console.log(event);
-        // Scroll other charts
-        // var zoom = myChart.getOption().dataZoom[0];
-        // myOtherChart.dispatchAction({
-        //     type: 'dataZoom',
-        //     dataZoomIndex: 0,
-        //     startValue: zoom.startValue,
-        //     endValue: zoom.endValue
-        // });
-        if (start === 0) this.requestData();
-        else this.updateOptions({});
+        if (!this._scrollInProgress) {
+            // console.log("onScroll");
+            this._scrollInProgress = true;
+            this.handleCtrl();
+            const { start: start, end: end } = event;
+            localStorage.setItem("dataZoom.startTime", start);
+            //localStorage.setItem("dataZoom.endTime", endTime);
+            //console.log(dataZoom);
+            //console.log(event);
+            // this._powerGraph.scrollGraph(this, new Pair<number, number>(start, end));
+            if (start === 0) this.requestData();
+            else this.updateOptions({});
+            this._scrollInProgress = false;
+        }
+    }
+    scrollGraph(startEnd) {
+        console.log("scrollGraph");
+        this._chart.dispatchAction({
+            type: "dataZoom",
+            dataZoomIndex: 0,
+            startValue: startEnd.first,
+            endValue: startEnd.second
+        });
     }
     onDoubleClick(event) {
         console.log("onDoubleClick");
@@ -38864,6 +38882,9 @@ class $e866791a01b6c100$export$614db49f3febe941 {
             key: "dataZoomSelect",
             dataZoomSelectActive: true
         });
+    }
+    onPointerDown(event) {
+        console.error("Graph::onPointerDown");
     }
     clearRefreshInterval() {
         if (this._tid != null) {
@@ -38887,6 +38908,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         }
     }
     handleCtrl() {
+        // console.log("Graph::handleCtrl");
         // Toggle zoomLock
         const option = this._chart.getOption();
         const dataZoom = option.dataZoom;
@@ -67327,7 +67349,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         // this._infoBox.setAttribute("id", "infoBox");
         var _style = document.createElement("style");
         _style.textContent = `
-            #chart-container {
+            .chart-container {
                 width: 100%;
             }
             #infoBox {
@@ -67346,6 +67368,24 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
             mode: "open"
         });
         this.shadowRoot.append(_style, this._mainContener /*, this._infoBox*/ );
+    }
+    onGraphCreated() {
+        const charts = [];
+        // let allCreated: boolean = this._graphs.length > 0;
+        for (const graph of this._graphs){
+            const chart = graph.getChart();
+            if (chart != null) charts.push(chart);
+            else return;
+        // if (!graph.isCreated()) {
+        //     allCreated = false;
+        //     break;
+        // }
+        }
+    // console.log("PowerGraph::connect: " + charts.length);
+    // echarts.connect(charts);
+    // if (allCreated) {
+    //     echarts.connect([chart1, chart2]);
+    // }
     }
     getTimeRange() {
         return this._range;
@@ -67398,6 +67438,9 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
     }
     isMobile() {
         return this._isMobile;
+    }
+    scrollGraph(touchedGraph, startEnd) {
+        for (const graph of this._graphs)if (graph != touchedGraph) graph.scrollGraph(startEnd);
     }
     connectedCallback() {
         //console.log("connectedCallback");
