@@ -23,7 +23,10 @@ type DataItem = {
     s: number;
 };
 
+var nextChartId: number = -1;
+
 export class Graph {
+    private _id: Number;
     private thisGraph: Graph;
     private _powerGraph: IPowerGraph;
     private _chart: echarts.EChartsType;
@@ -44,6 +47,8 @@ export class Graph {
     private _scrollInProgress: boolean = false;
 
     constructor(powerGraph: IPowerGraph, graphConfig: GraphConfig) {
+        this._id = ++nextChartId;
+        // console.log("ctor: " + this._id);
         this._powerGraph = powerGraph;
         this._globalConfig = powerGraph.getConfig();
         this._graphConfig = graphConfig;
@@ -54,6 +59,7 @@ export class Graph {
     }
 
     setHass(hass: HomeAssistant) {
+        // console.log("Graph::setHass: " + hass + ", id: " + this._id);
         this._hass = hass;
     }
 
@@ -92,6 +98,9 @@ export class Graph {
         this._chart.on('dataZoom', function (evt) { thisGraph.onScroll(evt); });
         this._chart.on('dblclick', function (evt) { console.error("Graph::dbl"); thisGraph.onDoubleClick(evt); });
         this._chart.on('pointerdown', function (evt) { console.error("Graph::pointerdown"); thisGraph.onPointerDown(evt); });
+
+        // console.log("chartC: " + this._chart);
+        // console.log("thisC: " + this);
 
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
@@ -258,9 +267,16 @@ export class Graph {
         this._powerGraph.onGraphCreated();
 
         this.requestData();
+
+        // console.log("Graph::createChart <<");
     }
 
     private requestData(): void {
+        if (!this._hass) {
+            console.error(`Graph(${this._id})::requestData() => Hass object is missing!`);
+            return;
+        }
+
         if (this._requestInProgress) {
             console.error("Request already in progress!");
             return;
@@ -301,6 +317,7 @@ export class Graph {
         };
         // console.log(request);
 
+        // console.log("Graph::requestData() => hass: " + this._hass + ", id: " + this._id);
         this._requestInProgress = true;
         this._hass.callWS(request).then(this.responseData.bind(this), this.loaderFailed.bind(this));
     }
@@ -494,6 +511,8 @@ export class Graph {
         const option: echarts.EChartsCoreOption = this._chart.getOption();
         const dataZoom: any[] = option.dataZoom as any[];
 
+        // console.log(`Graph::getDisplayedTimeRange() -> ${range}`);
+
         return new TimeRange(
             DateTime.fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].start / 100)),
             DateTime.fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].end / 100))
@@ -509,6 +528,8 @@ export class Graph {
 
     resize(): void {
         // console.log("Graph::resize");
+        // console.log("thisR: " + this);
+        // console.log("chartR: " + this._chart);
         if (this._chart == null) {
             // Create chart when the card size is known
             this.createChart();

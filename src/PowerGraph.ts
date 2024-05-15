@@ -115,7 +115,7 @@ class PowerGraph extends HTMLElement implements IPowerGraph {
     }
 
     set hass(hass: HomeAssistant) {
-        // console.log(hass);
+        // console.log("PowerGraph::hass() => hass: " + hass);
         this._hass = hass;
         for (const graph of this._graphs) {
             graph.setHass(hass);

@@ -38379,7 +38379,9 @@ class $53eba6098f86b86c$export$1402489b11e44f0c {
 }
 class $53eba6098f86b86c$export$804ce8cdc3ef0047 {
     constructor(){
-        this._timeRange = new $53eba6098f86b86c$export$74e1c7e2f1829413((0, $c70e8820d152b235$exports.DateTime).local(1980), (0, $c70e8820d152b235$exports.DateTime).local(2024));
+        this._timeRange = new $53eba6098f86b86c$export$74e1c7e2f1829413((0, $c70e8820d152b235$exports.DateTime).now().minus({
+            hours: 1
+        }), (0, $c70e8820d152b235$exports.DateTime).now());
         this._entityData = [];
     }
     hasData() {
@@ -38461,12 +38463,15 @@ function $53eba6098f86b86c$export$f26fbefb245185e5(list, numberOfPoints) {
 
 
 
+var $e866791a01b6c100$var$nextChartId = -1;
 class $e866791a01b6c100$export$614db49f3febe941 {
     constructor(powerGraph, graphConfig){
         this._tid = null;
         this._series = [];
         this._ctrlPressed = false;
         this._scrollInProgress = false;
+        this._id = ++$e866791a01b6c100$var$nextChartId;
+        // console.log("ctor: " + this._id);
         this._powerGraph = powerGraph;
         this._globalConfig = powerGraph.getConfig();
         this._graphConfig = graphConfig;
@@ -38475,6 +38480,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         this.clearRefreshInterval();
     }
     setHass(hass) {
+        // console.log("Graph::setHass: " + hass + ", id: " + this._id);
         this._hass = hass;
     }
     createContent(mainContener) {
@@ -38517,6 +38523,8 @@ class $e866791a01b6c100$export$614db49f3febe941 {
             console.error("Graph::pointerdown");
             thisGraph.onPointerDown(evt);
         });
+        // console.log("chartC: " + this._chart);
+        // console.log("thisC: " + this);
         //const startTime: number = toNumber(localStorage.getItem("dataZoom.startTime"), 75);
         //const endTime: number = toNumber(localStorage.getItem("dataZoom.endTime"), 100);
         //console.log(startTime, endTime);
@@ -38645,8 +38653,13 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         this._powerGraph.setTimeRange(new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)(startTime, endTime));
         this._powerGraph.onGraphCreated();
         this.requestData();
+    // console.log("Graph::createChart <<");
     }
     requestData() {
+        if (!this._hass) {
+            console.error(`Graph(${this._id})::requestData() => Hass object is missing!`);
+            return;
+        }
         if (this._requestInProgress) {
             console.error("Request already in progress!");
             return;
@@ -38678,6 +38691,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
             entity_ids: entities
         };
         // console.log(request);
+        // console.log("Graph::requestData() => hass: " + this._hass + ", id: " + this._id);
         this._requestInProgress = true;
         this._hass.callWS(request).then(this.responseData.bind(this), this.loaderFailed.bind(this));
     }
@@ -38837,6 +38851,7 @@ class $e866791a01b6c100$export$614db49f3febe941 {
         const range = this._data.getMaxTimeRange();
         const option = this._chart.getOption();
         const dataZoom = option.dataZoom;
+        // console.log(`Graph::getDisplayedTimeRange() -> ${range}`);
         return new (0, $53eba6098f86b86c$export$74e1c7e2f1829413)((0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].start / 100)), (0, $c70e8820d152b235$exports.DateTime).fromMillis(Math.round(range.from.toMillis() + (range.to.toMillis() - range.from.toMillis()) * dataZoom[0].end / 100)));
     }
     displayTimeRangeToPercent(maxTimeRange, displayedTimeRange) {
@@ -38845,6 +38860,8 @@ class $e866791a01b6c100$export$614db49f3febe941 {
     }
     resize() {
         // console.log("Graph::resize");
+        // console.log("thisR: " + this);
+        // console.log("chartR: " + this._chart);
         if (this._chart == null) // Create chart when the card size is known
         this.createChart();
         // console.log(`resize(${ this._card.clientWidth }, ${ this._card.clientHeight })`)
@@ -67332,7 +67349,7 @@ class $e23f1e1a76e2d7ce$var$PowerGraph extends HTMLElement {
         this.createContent();
     }
     set hass(hass) {
-        // console.log(hass);
+        // console.log("PowerGraph::hass() => hass: " + hass);
         this._hass = hass;
         for (const graph of this._graphs)graph.setHass(hass);
     }
